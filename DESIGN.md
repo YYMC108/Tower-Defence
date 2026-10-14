@@ -494,25 +494,40 @@ res://
 
 ## 16. 协作规范
 
-### 16.1 仓库状态与初始化流程
+### 16.1 仓库状态（✅ 已初始化并推送）
 
-- GitHub 远端：`https://github.com/YYMC108/Tower-Defence`（**当前为空仓库**）
-- 本地：`D:\new` —— **尚未 `git init`，也未关联 remote**
+- GitHub 远端：`https://github.com/YYMC108/Tower-Defence`
+- 本地工作副本：`D:\new`
+- 主分支：`main`，已建立上游追踪（`main...origin/main`）
 
-**空仓库的初始化流程**（**待你指令后执行，不可逆**）：
+**已完成的操作**：
 
 ```powershell
 cd D:\new
 git init
-git lfs install --local        # 仅在本地仓库启用 LFS
+git lfs install --local
 git remote add origin https://github.com/YYMC108/Tower-Defence.git
 git add -A
-git commit -m "chore: 项目初始化（架构文档 + 像素风工程配置 + 目录骨架）"
+git commit -m "chore: 项目初始化 — 架构文档、像素风工程配置与目录骨架"
 git branch -M main
-git push -u origin main        # ← 这一步开始影响远端，必须确认
+git push -u origin main
 ```
 
-> ⚠️ 因为远端为空，不存在覆盖协作者提交的风险。但**仍建议第一次 push 前让另两人确认**。
+**协作者首次获取工程**：
+
+```powershell
+git clone https://github.com/YYMC108/Tower-Defence.git
+cd Tower-Defence
+git lfs install --local     # ⚠️ 这一步不能省：否则素材会被当普通二进制提交，日后转移极麻烦
+git lfs pull
+```
+
+> ⚠️ **LFS 的关键前提**：`.gitattributes` 只是"声明"，真正生效需要本机执行过一次
+> `git lfs install --local`。**没有 `git-lfs` 的机器会把 `.png` 直接提交进 Git 本体。**
+> 协作者入伙前请先确认 `git lfs version` 有输出。
+
+> ⚠️ **不要在编辑器打开时改 `project.godot`**：Godot 可能用内存中的版本覆盖你的修改。
+> 改完跑一次 `tests/check_project_config.gd` 确认没坏。
 
 ### 16.2 版本统一（重要）
 
@@ -612,7 +627,7 @@ Godot 的 `.tscn` 是文本，git 能 diff，但两人同时改**同一个 `.tsc
 
 1. **本文档评审**：三位协作者读完，有异议直接提 PR 或在文档里改
 2. **回答 TODO-1 ~ TODO-9**（尤其 TODO-4 死亡螺旋，直接影响手感）
-3. **确认后初始化 git 仓库**（§16.1，不可逆，需明确指令）
+3. ~~确认后初始化 git 仓库~~ → ✅ 已完成（见 §16.1）
 4. **进入 M1**：搭实验关卡的最小战斗闭环
 
 ### M0 完成状态（可验证的产出）
@@ -620,19 +635,22 @@ Godot 的 `.tscn` 是文本，git 能 diff，但两人同时改**同一个 `.tsc
 | 产出 | 位置 | 状态 |
 |---|---|---|
 | 架构文档 | `DESIGN.md` | ✅ |
+| 仓库说明 | `README.md` | ✅（面向首次打开仓库的人） |
 | 像素风工程配置 | `project.godot` | ✅ 已用无头模式逐项验证 |
 | 碰撞层命名 | `project.godot` → `[layer_names]` | ✅ |
 | 输入映射（移动/攻击/技能/系统） | `project.godot` → `[input]` | ✅ 已实际读取绑定确认 |
 | 目录骨架 + 每层职责说明 | `res://` 下 37 个 `README.md` | ✅ |
-| Git LFS 与忽略规则 | `.gitattributes` / `.gitignore` | ✅（LFS 需 `git init` 后 `git lfs install --local`） |
+| Git LFS 与忽略规则 | `.gitattributes` / `.gitignore` | ✅ 本地已 `git lfs install --local` |
 | 配置回归检查 | `tests/check_project_config.gd` | ✅ 退出码 0 |
+| **远端仓库** | `origin/main` @ `6ebfce9` | ✅ 已推送，追踪关系已建立 |
 
 **M0 遗留（有意为之）**：
 
-- **尚未 `git init`，也未推送远端** —— 等明确指令（不可逆）
-- **没有主场景**，所以 `godot --quit` 会报 `no main scene defined`。这是预期状态，M1 建了战斗场景就消失。
+- **没有主场景**，所以按 F5 会报 `no main scene defined`。这是预期状态，M1 建了战斗场景就消失。
   运行回归检查请用 `--script`，那条命令不依赖主场景。
 - 渲染后端仍是 `forward_plus` + `d3d12`（TODO-6 待确认是否改 `gl_compatibility`）
+- **美术规格约定尚未写入本文档**（尺寸/锚点/动画帧/朝向/命名）——建议在协作者提交素材之前补上，
+  否则素材与战斗场景对不上会导致返工
 
 ---
 
