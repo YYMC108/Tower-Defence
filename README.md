@@ -71,7 +71,7 @@ godot --headless --path . --script res://tests/check_project_config.gd
 | 文档 | 内容 |
 |---|---|
 | **[DESIGN.md](DESIGN.md)** | ⭐ **唯一设计口径**。术语表、伤害矩阵、系统职责、数据模型、协作规范、风险清单 |
-| **[ART_SPEC.md](ART_SPEC.md)** | 🎨 **美术规格约定**（尺寸/锚点/动画/命名/交付格式/分工）。**单独发给美术协作者** |
+| **[ART_SPEC.md](ART_SPEC.md)** | 🎨 **美术规格约定**（尺寸/锚点/动画/命名/交付格式）。**单独发给美术协作者** |
 | [tests/README.md](tests/README.md) | 校验脚本怎么跑 |
 | 各目录下的 `README.md` | 该目录该放什么 |
 
