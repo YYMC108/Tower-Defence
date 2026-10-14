@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="LevelData" format=3 load_steps=6]
+
+[ext_resource type="Script" path="res://scripts/data/level_data.gd" id="1_ld"]
+[ext_resource type="Script" path="res://scripts/data/wave_data.gd" id="2_wd"]
+[ext_resource type="Script" path="res://scripts/data/wave_spawn_entry.gd" id="3_wse"]
+[ext_resource type="Resource" path="res://resources/enemies/melee_grunt.tres" id="4_grunt"]
+
+[sub_resource type="Resource" id="SpawnEntry_w1"]
+script = ExtResource("3_wse")
+enemy_data = ExtResource("4_grunt")
+count = 4
+spawn_interval = 1.1
+delay_before = 0.0
+
+[sub_resource type="Resource" id="Wave_1"]
+script = ExtResource("2_wd")
+id = &"wave_test_01"
+display_name = "测试波次 1"
+is_boss_wave = false
+spawn_entries = Array[Resource]([SubResource("SpawnEntry_w1")])
+
+[resource]
+script = ExtResource("1_ld")
+id = &"level_test_01"
+display_name = "实验关卡 01"
+description = "M1 实验田。1 个塔位、1 波近战敌人。改 waves 数组可加波次，改地图场景的 TowerSlots 可加塔位，两者都不需要改代码。"
+map_scene_path = "res://scenes/battle/map/test_level.tscn"
+waves = Array[Resource]([SubResource("Wave_1")])
+base_max_health = 100.0
+starting_battle_currency = 10
+hero_revive_base_seconds = 5.0
+hero_revive_increment = 5.0
+hero_revive_max_seconds = 30.0
+reward_stars = 1
+reward_gold = 10

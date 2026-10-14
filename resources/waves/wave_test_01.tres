@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WaveData" format=3 load_steps=4]
+
+[ext_resource type="Script" path="res://scripts/data/wave_data.gd" id="1_wd"]
+[ext_resource type="Script" path="res://scripts/data/wave_spawn_entry.gd" id="2_wse"]
+[ext_resource type="Resource" path="res://resources/enemies/melee_grunt.tres" id="3_enemy"]
+
+[sub_resource type="Resource" id="SpawnEntry_grunt"]
+script = ExtResource("2_wse")
+enemy_data = ExtResource("3_enemy")
+count = 4
+spawn_interval = 1.1
+delay_before = 0.0
+
+[resource]
+script = ExtResource("1_wd")
+id = &"wave_test_01"
+display_name = "测试波次 1"
+is_boss_wave = false
+spawn_entries = Array[Resource]([SubResource("SpawnEntry_grunt")])

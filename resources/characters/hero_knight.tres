@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/character_data.gd" id="1_cd"]
+
+[resource]
+script = ExtResource("1_cd")
+id = &"hero_knight"
+display_name = "骑士"
+description = "主输出，玩家操控。同时是近战通往大本营的唯一物理阻挡。"
+role = 0
+tower_kind = 0
+max_health = 140.0
+move_speed = 92.0
+attack_damage = 14.0
+attack_interval = 0.42
+attack_range = 54.0
+damage_type = 0
+targeting_strategy = &"nearest"
+heal_amount = 0.0
+heal_interval = 2.0
+copy_limit = 1
+unlock_condition = ""
+unlocked_by_default = true

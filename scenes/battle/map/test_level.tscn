@@ -1,0 +1,31 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/battle/map/test_level_map.gd" id="1_mapl"]
+
+[node name="TestLevel" type="Node2D"]
+script = ExtResource("1_mapl")
+
+[node name="Base" type="Marker2D" parent="." groups=["map_base"]]
+position = Vector2(432, 160)
+
+[node name="HeroStart" type="Marker2D" parent="." groups=["map_hero_start"]]
+position = Vector2(218, 160)
+
+[node name="EnemySpawn" type="Marker2D" parent="." groups=["map_spawn"]]
+position = Vector2(28, 160)
+
+[node name="EnemyPath" type="Node2D" parent="."]
+
+[node name="Waypoint1" type="Marker2D" parent="EnemyPath" groups=["map_waypoint"]]
+position = Vector2(140, 160)
+
+[node name="Waypoint2" type="Marker2D" parent="EnemyPath" groups=["map_waypoint"]]
+position = Vector2(300, 160)
+
+[node name="Waypoint3" type="Marker2D" parent="EnemyPath" groups=["map_waypoint"]]
+position = Vector2(372, 160)
+
+[node name="TowerSlots" type="Node2D" parent="."]
+
+[node name="TowerSlot1" type="Marker2D" parent="TowerSlots" groups=["map_tower_slot"]]
+position = Vector2(252, 108)
