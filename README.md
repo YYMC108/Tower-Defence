@@ -59,10 +59,48 @@ godot --headless --path . --script res://tests/check_project_config.gd
 
 ## 当前进度
 
-**M0 · 架构已完成。** 见 [DESIGN.md](DESIGN.md) 第 17 节的里程碑表。
+**M0 架构 + M1 战斗最小闭环：代码已完成。** 里程碑表见 [DESIGN.md](DESIGN.md) 第 18 节。
 
-尚未开始 M1（战斗最小闭环），因此**现在还没有主场景**，直接按 F5 会提示
-`no main scene defined`——这是预期状态，不是错误。
+现在**已经有主场景**了：用 Godot 4.7.2 打开工程，直接按 **F5** 就能玩到实验关卡。
+
+### 现在能玩到什么
+
+一张 480×320 的调试地图，1 个塔位、1 波共 4 只近战敌人：
+
+- **主角**（绿方块）：WASD/方向键移动，**按住鼠标左键**朝鼠标方向攻击
+- **塔**（蓝方块）：放在塔位上自动索敌攻击，射程有淡淡的光圈提示
+- **近战敌人**（红方块）：沿路径冲向大本营。**主角挡在路上时它们会停下来打主角**
+- **主角死亡**：碰撞体消失 → 敌人**直接穿过**冲进大本营。5 秒后复活（第 2 次 10 秒，封顶 30 秒）
+- **大本营**（黄色方框）：血量在左上角，**跨波次不恢复**，归零就输
+- 按 **回车** 开始下一波，按 **Backspace** 认输重开
+
+美术资源还没到，所以全部单位都是**程序生成的纯色方块**，地图上的路径线、
+塔位圈、大本营框都由 `test_level_map.gd` 直接绘制——**功能完全可测**。
+
+### 怎么改配置（不需要改代码）
+
+| 想改什么 | 改哪里 |
+|---|---|
+| 波次数量 | `resources/levels/test_level.tres` 的 `waves` 数组 |
+| 每波敌人构成 | `resources/waves/*.tres` 的 `spawn_entries` |
+| 塔位数量/位置 | 地图场景 `scenes/battle/map/test_level.tscn` 里拖拽 `TowerSlots` 下的标记 |
+| 路径 | 拖拽 `EnemyPath` 下的路径点标记 |
+| 大本营血量 | `test_level.tres` 的 `base_max_health` |
+| 复活惩罚曲线 | `test_level.tres` 的 `hero_revive_*` 三个字段 |
+| 角色/敌人属性 | `resources/characters/*.tres`、`resources/enemies/*.tres` |
+
+### 自动化验证
+
+```powershell
+# 战斗循环冒烟测试（35 项检查，实测全过）
+godot --headless --path . res://tests/battle_smoke_test.tscn -- --no-save
+
+# 工程配置回归检查
+godot --headless --path . --script res://tests/check_project_config.gd
+```
+
+> ⚠️ 冒烟测试跑在 headless 下（**没有鼠标**），所以它验证不了主角攻击的手感。
+> 那部分必须人工按 F5 试。详见 [tests/README.md](tests/README.md)。
 
 ---
 
