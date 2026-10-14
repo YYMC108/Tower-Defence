@@ -14,6 +14,15 @@ config/name="Tower Defence"
 config/description="2D 像素风闯关塔防"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
+; 主场景。M1 直接用战斗场景，以后有菜单了改成 boot/main_menu。
+run/main_scene="res://scenes/battle/battle_root.tscn"
+
+[autoload]
+
+; 顺序有意义：SaveManager 必须在 GameState 之前，
+; 因为 GameState._ready() 会调用 SaveManager.load_game()。
+SaveManager="*res://autoload/save_manager.gd"
+GameState="*res://autoload/game_state.gd"
 
 [display]
 
