@@ -713,13 +713,58 @@ git lfs pull
 > ⚠️ **不要在编辑器打开时改 `project.godot`**：Godot 可能用内存中的版本覆盖你的修改。
 > 改完跑一次 `tests/check_project_config.gd` 确认没坏。
 
-### 17.2 版本统一（重要）
+### 17.2 ⚠️ 推送通道：本机已改用 SSH（HTTPS 不可用）
+
+**实测结论**：在本机（Windows，中国大陆网络环境），`https://github.com` 的 **443 端口不可达**
+（`Failed to connect to github.com port 443`），但 **SSH（22 端口）完全正常**。
+
+诊断过程与结论：
+
+| 检查项 | 结果 |
+|---|---|
+| 代理配置 | 无（`http.proxy` / 环境变量均为空） |
+| DNS 解析 | 正常（`github.com` → `20.205.243.166` 等 3 个 IP） |
+| `github.com:443` | ❌ 超时（其中 `20.205.243.166` 被阻断） |
+| `api.github.com:443` / `codeload.github.com:443` | ✅ 可连 |
+| 其他网站（baidu / microsoft） | ✅ 正常 |
+| **`git@github.com` SSH 认证** | ✅ **成功**（`~/.ssh/id_ed25519_github`） |
+
+**因此本仓库的 remote 已改为 SSH**：
+
+```powershell
+git remote set-url origin git@github.com:YYMC108/Tower-Defence.git
+```
+
+**如果哪天 HTTPS 恢复了、想切回去**：
+
+```powershell
+git remote set-url origin https://github.com/YYMC108/Tower-Defence.git
+```
+
+**如果 SSH 也失效了**，可临时用 IP 覆盖绕过坏 IP（仅作用于本仓库，需逐个试可用 IP）：
+
+```powershell
+git config --local http.curloptResolve "github.com:443:20.205.243.168"
+git push
+git config --local --unset http.curloptResolve   # 用完清掉
+```
+
+> 本机可用的 GitHub IP 实测为 `140.82.112.3`、`140.82.113.3`、`140.82.114.3`、
+> `20.205.243.165`、`20.205.243.168`；而 `20.205.243.166`、`140.82.121.3/4` 不通。
+>
+> ⚠️ **不要把这个 IP 覆盖写进全局配置**，也不要在克隆说明里写死 IP——IP 会变，
+> 且协作者的网络环境可能不同。**优先用 SSH。**
+
+> 📌 **协作者注意**：clone 时如果 HTTPS 失败，改用 SSH：
+> `git clone git@github.com:YYMC108/Tower-Defence.git`（需要先配置 SSH 公钥到 GitHub）
+
+### 17.3 版本统一（重要）
 
 - 全队**必须**使用 **Godot 4.7.2**。`project.godot` 的 `config/features` 已锁定 `"4.7"`
 - 用不同小版本打开会产生 `.tscn` 格式差异，导致莫名其妙的冲突
 - **写进 README：`Godot 4.7.2`，附下载链接**
 
-### 17.3 Git LFS
+### 17.4 Git LFS
 
 像素美术与音频是二进制，不用 LFS 仓库会迅速膨胀到难以 clone。
 
@@ -727,30 +772,30 @@ git lfs pull
 - `.gitattributes` 已配置（见文件）
 - **`git lfs install --local` 必须在 `git init` 之后执行**
 
-### 17.4 场景所有权（防冲突）
+### 17.5 场景所有权（防冲突）
 
 Godot 的 `.tscn` 是文本，git 能 diff，但两人同时改**同一个 `.tscn` 必然冲突**。
 
 **规则：每个 `.tscn` 有且只有一个"负责人"。** 需要改别人的场景时，先在群里说一声，或者让对方改。
 
-### 17.5 分支与 PR
+### 17.6 分支与 PR
 
 - 主分支 `main` 保持可运行（**任何时候 clone 下来都能按 F5 跑起来**）
 - 功能走 `feat/xxx` 分支 + PR
 - **PR 描述里必须写明：改了哪些 `.tscn`**（否则 review 容易漏）
 - 合并前自测：能按 F5 运行、无报错
 
-### 17.6 提交粒度
+### 17.7 提交粒度
 
 一次提交 = 一个功能或一个场景。**禁止**把"改了三张地图 + 重写伤害系统 + 加了个 UI"塞进一个提交。
 
-### 17.7 美术占位原则
+### 17.8 美术占位原则
 
 程序用**纯色方块 / Godot 内置图标**先跑通逻辑，美术后替换。
 
 > **绝不允许"等美术"阻塞逻辑开发。** 这是小团队最常见的停滞原因。
 
-### 17.8 代码规范
+### 17.9 代码规范
 
 - **静态类型**：所有函数签名、变量带类型（`func take_damage(dmg: Damage) -> void:`）
 - **缩进**：Tab（Godot 默认）
@@ -802,7 +847,7 @@ Godot 的 `.tscn` 是文本，git 能 diff，但两人同时改**同一个 `.tsc
 | **大本营"一失足"** | 跨波次不回血，早期失误导致必输但玩家不自知 | 波数可见 + HUD 常驻血量 + **认输重开** |
 | **死亡螺旋** | 死越多→复活越久→大本营挨打越多→死更多 | 惩罚封顶 + 跨波次衰减（TODO-4） |
 | **合成系统工期** | 需要星级数据、副本系统、合成 UI、属性计算 | **放到 M6**，M1 不依赖它 |
-| **`.tscn` 冲突** | 多人同时改同一场景 | 场景所有权制（§17.4） |
+| **`.tscn` 冲突** | 多人同时改同一场景 | 场景所有权制（§17.5） |
 | **数值硬编码** | 后期重构成本极高 | 全部走 `.tres`（§12 铁律 3） |
 
 ---

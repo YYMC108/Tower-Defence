@@ -36,6 +36,13 @@ git lfs version
 # 4. 用 Godot 4.7.2 打开这个目录（不是打开单个场景文件）
 ```
 
+> ⚠️ **如果 HTTPS 克隆失败**（`Failed to connect to github.com port 443`），改用 SSH：
+> ```powershell
+> git clone git@github.com:YYMC108/Tower-Defence.git
+> ```
+> 需要先把 SSH 公钥配置到 GitHub。本机实测 HTTPS 的 443 不可达、SSH 正常，
+> 详见 [DESIGN.md](DESIGN.md) 第 17.2 节。
+
 首次打开时 Godot 会自动导入素材并生成 `.import` 文件与 `.godot/` 缓存，属正常现象。
 
 ### 验证工程配置是否完好
