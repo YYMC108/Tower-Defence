@@ -6,6 +6,7 @@
 [sub_resource type="Resource" id="Resource_3ctli"]
 script = ExtResource("2_nylk6")
 texture_path = "res://assets/sprites/enemies/ranged_archer_idle.png"
+frame_count = 1
 fps = 5.0
 frame_durations = PackedFloat32Array()
 
@@ -13,6 +14,7 @@ frame_durations = PackedFloat32Array()
 script = ExtResource("2_nylk6")
 animation_name = &"run"
 texture_path = "res://assets/sprites/enemies/ranged_archer_run.png"
+frame_count = 16
 fps = 20.0
 frame_durations = PackedFloat32Array()
 

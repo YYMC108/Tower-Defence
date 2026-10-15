@@ -21,6 +21,10 @@ extends SceneTree
 ## 动画速度在哪调：每个 _spriteset_*.tres 里 SpriteSheetDef 的 `fps` 字段。
 ## 注意 sprite_animator.gd 把 animation_speed 固定为 1.0，速度**只**由 fps
 ## （即逐帧 duration = 1/fps）决定，改 fps 就是改快慢。
+##
+## ⚠️ frame_count 必须显式填写：帧**不一定**是正方形的。
+## ninja_attack.png 是 2048×128 但每帧 256×128（挥刀横向拉宽），共 8 帧；
+## 若按「宽 ÷ 高」推断会算成 16 帧，每帧被切成两半，角色只剩半个身体。
 
 const SPRITES := "res://assets/sprites/"
 const CHARACTERS := "res://resources/characters/"
@@ -34,11 +38,12 @@ func _init() -> void:
 	# ── 主角 ninja ──────────────────────────────
 	var ninja_set := UnitSpriteSet.new()
 	ninja_set.sheets = [
-		_sheet(&"idle", SPRITES + "hero/ninja_idle.png", 0, 8.0, true),
-		_sheet(&"run", SPRITES + "hero/ninja_run.png", 0, 11.1, true),
-		# attack 不填 frame_count：由 2048÷128 自动推断为 16 帧。
-		# 美术文档写的是 8 帧、实际 16 帧；自动推断正好绕过这个文档错误。
-		_sheet(&"attack", SPRITES + "hero/ninja_attack.png", 0, 10.0, false),
+		_sheet(&"idle", SPRITES + "hero/ninja_idle.png", 4, 8.0, true),
+		_sheet(&"run", SPRITES + "hero/ninja_run.png", 8, 11.1, true),
+		# 攻击：8 帧 × 256×128（非正方形，所以 frame_count 必须显式写 8）
+		# 逐帧时长来自美术交接文档：前 4 帧出手、后 4 帧收招
+		_sheet(&"attack", SPRITES + "hero/ninja_attack.png", 8, 10.0, false,
+			PackedFloat32Array([1.1, 0.7, 0.6, 0.8, 0.5, 0.7, 0.9, 1.6])),
 	]
 	written += _save(ninja_set, "res://resources/characters/_spriteset_hero_ninja.tres")
 
@@ -64,7 +69,7 @@ func _init() -> void:
 
 	# ── 输出塔 ──────────────────────────────────
 	var archer_set := UnitSpriteSet.new()
-	archer_set.sheets = [_sheet(&"idle", SPRITES + "towers/tower_archer_idle.png", 0, 5.0, true)]
+	archer_set.sheets = [_sheet(&"idle", SPRITES + "towers/tower_archer_idle.png", 1, 5.0, true)]
 	written += _save(archer_set, "res://resources/characters/_spriteset_tower_archer.tres")
 
 	var tower_archer := CharacterData.new()
@@ -87,7 +92,7 @@ func _init() -> void:
 
 	# ── 治疗塔 ──────────────────────────────────
 	var healer_set := UnitSpriteSet.new()
-	healer_set.sheets = [_sheet(&"idle", SPRITES + "towers/tower_healer_idle.png", 0, 5.0, true)]
+	healer_set.sheets = [_sheet(&"idle", SPRITES + "towers/tower_healer_idle.png", 1, 5.0, true)]
 	written += _save(healer_set, "res://resources/characters/_spriteset_tower_healer.tres")
 
 	var tower_healer := CharacterData.new()
@@ -110,8 +115,8 @@ func _init() -> void:
 	# ── 近战小兵 ────────────────────────────────
 	var grunt_set := UnitSpriteSet.new()
 	grunt_set.sheets = [
-		_sheet(&"idle", SPRITES + "enemies/melee_grunt_idle.png", 0, 5.0, true),
-		_sheet(&"run", SPRITES + "enemies/melee_grunt_run.png", 0, 10.0, true),
+		_sheet(&"idle", SPRITES + "enemies/melee_grunt_idle.png", 1, 5.0, true),
+		_sheet(&"run", SPRITES + "enemies/melee_grunt_run.png", 5, 10.0, true),
 	]
 	written += _save(grunt_set, "res://resources/enemies/_spriteset_melee_grunt.tres")
 
@@ -139,8 +144,8 @@ func _init() -> void:
 	# ── 远程弓手 ────────────────────────────────
 	var archer_enemy_set := UnitSpriteSet.new()
 	archer_enemy_set.sheets = [
-		_sheet(&"idle", SPRITES + "enemies/ranged_archer_idle.png", 0, 5.0, true),
-		_sheet(&"run", SPRITES + "enemies/ranged_archer_run.png", 0, 20.0, true),
+		_sheet(&"idle", SPRITES + "enemies/ranged_archer_idle.png", 1, 5.0, true),
+		_sheet(&"run", SPRITES + "enemies/ranged_archer_run.png", 16, 20.0, true),
 	]
 	written += _save(archer_enemy_set, "res://resources/enemies/_spriteset_ranged_archer.tres")
 
@@ -193,13 +198,15 @@ func _init() -> void:
 	quit(0)
 
 
-func _sheet(anim: StringName, path: String, count: int, fps: float, loop: bool) -> SpriteSheetDef:
+func _sheet(anim: StringName, path: String, count: int, fps: float, loop: bool,
+		durations: PackedFloat32Array = PackedFloat32Array()) -> SpriteSheetDef:
 	var s := SpriteSheetDef.new()
 	s.animation_name = anim
 	s.texture_path = path
-	s.frame_count = count
+	s.frame_count = count   # 显式填写，不依赖推断（帧不一定是正方形）
 	s.fps = fps
 	s.loop = loop
+	s.frame_durations = durations
 	return s
 
 
