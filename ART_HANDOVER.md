@@ -16,8 +16,6 @@
 | `hero/ninja_idle.png` | 主角待机 | 128×128 | 4 | 8 fps | ✅ | ×1 |
 | `hero/ninja_run.png` | 主角移动 | 128×128 | 8 | 11.1 fps | ✅ | ×1 |
 | `hero/ninja_attack.png` | 主角攻击 + 收招 | **256×128** | 8 | 10 fps | ❌ | ×1 |
-| `hero/juno_idle.png` | 备用角色待机 | 128×128 | 1 | 5 fps | ✅ | ×1 |
-| `hero/juno_kick.png` | 备用角色踢击 | 128×128 | 13 | 15 fps | ❌ | ×1 |
 | `enemies/melee_grunt_idle.png` | 近战敌人待机 | 32×32 | 1 | 5 fps | ✅ | ×4 |
 | `enemies/melee_grunt_run.png` | 近战敌人移动 | 32×32 | 5 | 10 fps | ✅ | ×4 |
 | `enemies/ranged_archer_idle.png` | 远程敌人待机 | 32×32 | 1 | 5 fps | ✅ | ×4 |
@@ -26,6 +24,9 @@
 | `towers/tower_healer_idle.png` | 治疗塔 | 64×64 | 1 | 5 fps | ✅ | ×2 |
 
 > **全部是横排单行 spritesheet，逐帧等大**（符合 §15.4）。
+> **`ss_angel`（射手天使）不在交付范围内。**
+> 它只作为**动作参考**（踢击的 13 帧节奏），不会进游戏素材。
+> 需要在美术实验工程里查看：`demo/assets/characters/ss_angel/`。
 > `ninja_attack.png` 前 4 帧是 `attack_1`、后 4 帧是 `recover_1`，两段都 **loop=false**，
 > 每帧 duration 依次是 `1.1 / 0.7 / 0.6 / 0.8` 和 `0.5 / 0.7 / 0.9 / 1.6`（这是逐帧节奏，不是固定帧率）。
 
@@ -149,7 +150,7 @@
 
 | 素材 | 状态 |
 |---|---|
-| 主角 **ninja**、备用 **juno** | ✅ 原创赛博角色，AI 辅助生成 + 多轮手工调整后定稿 |
+| 主角 **ninja**、备用 **ss_angel** | ✅ 原创赛博角色，AI 辅助生成 + 多轮手工调整后定稿 |
 | 塔（两只猫）、敌人（机甲）、地形、UI | ✅ 原创 |
 
 视觉语言（深蓝黑描边、青/品红/黄绿霓虹、冷灰金属、满明度范围）见 `STYLE.md`，
@@ -181,6 +182,6 @@
 
 **待策划确认**：
 
-- ninja / juno 在 roster 里是什么定位？（仓库现有 `hero_knight`，和我们这两个对不上）
+- ninja 在 roster 里是什么定位？（仓库现有 `hero_knight`，和我们这两个对不上）
 - 塔的正式 ID 就是 `tower_archer` / `tower_healer` 吗？
 - 硬币（已归档，未进项目）要用在哪、显示多大？
