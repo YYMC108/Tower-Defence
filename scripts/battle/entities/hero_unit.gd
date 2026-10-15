@@ -124,9 +124,13 @@ func _handle_movement(_delta: float) -> void:
 		input_dir = input_dir.normalized()
 	velocity = input_dir * data.move_speed
 	move_and_slide()
-	# 只在非攻击状态下切换跑/待机
+	# 只在非攻击状态下切换跑/待机与朝向。
+	# 朝向用**移动方向**（WASD），而不是鼠标方向 —— 跑动时应该面朝跑的方向。
 	if _attack_anim_timer <= 0.0:
-		_set_animation(&"run" if input_dir.length_squared() > 0.01 else &"idle")
+		var moving: bool = input_dir.length_squared() > 0.01
+		_set_animation(&"run" if moving else &"idle")
+		if moving and animator != null:
+			animator.set_facing(input_dir.x)
 
 
 func _handle_attack(_delta: float) -> void:
@@ -176,6 +180,8 @@ func _play_attack_animation() -> void:
 	if animator == null or not animator.sprite_frames.has_animation(&"attack"):
 		return
 	_attack_anim_timer = ATTACK_ANIM_TIMEOUT
+	# 攻击时朝向**瞄准方向**（鼠标），与跑动的朝向来源不同
+	animator.set_facing(_facing.x)
 	animator.play_animation(&"attack", true)
 
 

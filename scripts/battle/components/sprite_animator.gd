@@ -78,7 +78,14 @@ func build_sprite_frames(sprite_set: UnitSpriteSet) -> SpriteFrames:
 
 		frames.add_animation(sheet.animation_name)
 		frames.set_animation_loop(sheet.animation_name, sheet.loop)
-		frames.set_animation_speed(sheet.animation_name, sheet.fps)
+		# ⚠️ 必须固定为 1.0，只用逐帧 duration 控制速度。
+		#
+		# Godot 的实际算法是「帧时长 = duration ÷ animation_speed」。
+		# 如果这里再填 fps、同时又给每帧 duration = 1/fps，
+		# 速度会被平方（实测 11.1 fps 的动画跑成了 123 帧/秒，
+		# 看起来像抽搐/闪烁）。所以 animation_speed 恒为 1.0，
+		# 快慢完全由 SpriteSheetDef.duration_for_frame() 决定。
+		frames.set_animation_speed(sheet.animation_name, 1.0)
 
 		for i: int in range(total):
 			var atlas := AtlasTexture.new()
@@ -96,6 +103,14 @@ func play_animation(animation_name: StringName, restart: bool = false) -> void:
 		return
 	_current = animation_name
 	play(animation_name)
+
+
+## 按水平朝向翻转精灵（素材只交付单朝向，左右靠引擎翻转）。
+## horizontal_direction 接近 0 时保持当前朝向 —— 避免纯上下移动时来回抖动。
+func set_facing(horizontal_direction: float) -> void:
+	if absf(horizontal_direction) < 0.01:
+		return
+	flip_h = horizontal_direction < 0.0
 
 
 func current_animation_name() -> StringName:

@@ -188,6 +188,9 @@ func _physics_process(delta: float) -> void:
 	var moved: float = before.distance_to(global_position)
 	_travelled += moved
 	_set_animation(&"run" if moved > MOVE_ANIM_THRESHOLD else &"idle")
+	# 朝向按实际行进方向翻转（路径若拐弯也需要）
+	if moved > MOVE_ANIM_THRESHOLD and animator != null:
+		animator.set_facing((global_position - before).x)
 
 
 ## 近战：主角优先，否则冲家

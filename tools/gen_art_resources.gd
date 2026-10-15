@@ -8,6 +8,19 @@ extends SceneTree
 ## 生成可以保证类型与格式完全正确。
 ##
 ## 用法：godot --headless --path . --script res://tools/gen_art_resources.gd
+##
+## ⚠️⚠️ 这是**一次性引导脚本**，不是常规工具。⚠️⚠️
+## 重跑它会**覆盖** resources/ 下这些 .tres 里的手工调整。
+##
+## 所以：
+##   - 只想调动画快慢/帧数？**直接改 .tres**（在 Godot 检查器里点开就能改），
+##     不要重跑本脚本。
+##   - 确实要重跑本脚本（例如新增角色）？先把 .tres 里的调整同步回这里，
+##     否则会被打回原样。
+##
+## 动画速度在哪调：每个 _spriteset_*.tres 里 SpriteSheetDef 的 `fps` 字段。
+## 注意 sprite_animator.gd 把 animation_speed 固定为 1.0，速度**只**由 fps
+## （即逐帧 duration = 1/fps）决定，改 fps 就是改快慢。
 
 const SPRITES := "res://assets/sprites/"
 const CHARACTERS := "res://resources/characters/"
