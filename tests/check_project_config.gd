@@ -29,8 +29,13 @@ func _init() -> void:
 	_check_int("rendering/textures/canvas_textures/default_texture_filter", 0, "Nearest(0)")
 	_check_str("display/window/stretch/scale_mode", "integer")
 	_check_str("display/window/stretch/mode", "canvas_items")
+	# ⚠️ aspect 曾经被 Godot 编辑器重写 project.godot 时删掉过，
+	#    导致窗口按 ignore 拉伸、像素非等比变形。这条是那之后补的，不要删。
+	_check_str("display/window/stretch/aspect", "keep")
 
 	print("=== 2. 视口 ===")
+	# 改这两个数字等于改整个世界的尺度：所有 .tres 里的距离/速度、
+	# 地图 Marker 坐标、HUD 布局常量都要跟着改。改完必须重跑战斗冒烟测试。
 	_check_int("display/window/size/viewport_width", 480, "")
 	_check_int("display/window/size/viewport_height", 320, "")
 
