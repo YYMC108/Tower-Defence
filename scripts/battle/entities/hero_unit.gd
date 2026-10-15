@@ -19,6 +19,24 @@ const PLACEHOLDER_SIZE: float = 20.0
 ## 攻击动画播放期间仍按此节奏判定，与 attack_interval 解耦
 const ATTACK_ANIM_TIMEOUT: float = 2.0
 
+## 是否用攻击动画打断移动动画。
+##
+## ⚠️ 本期**刻意关闭**，原因是踩过一次坑：
+##   美术给的攻击逐帧节奏 1.1/0.7/0.6/0.8/0.5/0.7/0.9/1.6 被按「秒」理解，
+##   于是攻击动画总长 **6.90 秒**，而攻击间隔只有 **0.42 秒**。
+##   攻击时每 0.42 秒就 play(restart=true) 重播一次 —— 连第一帧（1.1 秒）
+##   都播不完，角色**永远卡在攻击姿势第一帧**，表现为明显的「攻击停顿感」。
+##
+## 关闭后：攻击不改变角色的移动/待机动画与朝向，手感与接入美术前一致
+##（攻击判定本来就独立于动画，DPS 从未受影响）。
+##
+## 重新开启前需要先定两件事：
+##   1. 那组 duration 的单位到底是什么（秒？相对权重？还是 1/10 秒？）
+##   2. 攻击动画时长必须 ≤ 攻击间隔，否则永远播不完
+##      （按 10 fps 算 8 帧 = 0.8 秒，仍大于 0.42 秒的间隔）
+## 攻击动画数据与配置都已保留，定好之后把本开关改成 true 即可。
+const USE_ATTACK_ANIMATION: bool = false
+
 var data: CharacterData
 
 var health: HealthComponent
@@ -124,13 +142,18 @@ func _handle_movement(_delta: float) -> void:
 		input_dir = input_dir.normalized()
 	velocity = input_dir * data.move_speed
 	move_and_slide()
-	# 只在非攻击状态下切换跑/待机与朝向。
+	# 只在非攻击状态下切换跑/待机与朝向（USE_ATTACK_ANIMATION 关闭时
+	# _attack_anim_timer 恒为 0，所以这里等价于"每帧都刷新"，手感与接入美术前一致）。
 	# 朝向用**移动方向**（WASD），而不是鼠标方向 —— 跑动时应该面朝跑的方向。
-	if _attack_anim_timer <= 0.0:
+	if not _is_attack_animation_active():
 		var moving: bool = input_dir.length_squared() > 0.01
 		_set_animation(&"run" if moving else &"idle")
 		if moving and animator != null:
 			animator.set_facing(input_dir.x)
+
+
+func _is_attack_animation_active() -> bool:
+	return USE_ATTACK_ANIMATION and _attack_anim_timer > 0.0
 
 
 func _handle_attack(_delta: float) -> void:
@@ -177,6 +200,10 @@ func _set_animation(animation_name: StringName) -> void:
 
 
 func _play_attack_animation() -> void:
+	# 本期关闭（见 USE_ATTACK_ANIMATION 的说明）：不打断移动动画。
+	# 攻击判定不受影响 —— 它本来就独立于动画，DPS 与手感保持接入美术前的状态。
+	if not USE_ATTACK_ANIMATION:
+		return
 	if animator == null or not animator.sprite_frames.has_animation(&"attack"):
 		return
 	_attack_anim_timer = ATTACK_ANIM_TIMEOUT

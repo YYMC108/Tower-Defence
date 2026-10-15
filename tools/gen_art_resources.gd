@@ -40,10 +40,23 @@ func _init() -> void:
 	ninja_set.sheets = [
 		_sheet(&"idle", SPRITES + "hero/ninja_idle.png", 4, 8.0, true),
 		_sheet(&"run", SPRITES + "hero/ninja_run.png", 8, 11.1, true),
-		# 攻击：8 帧 × 256×128（非正方形，所以 frame_count 必须显式写 8）
-		# 逐帧时长来自美术交接文档：前 4 帧出手、后 4 帧收招
+		# 攻击：8 帧 × 256×128（非正方形，frame_count 必须显式写 8）
+		#
+		# 逐帧时长说明（这里踩过坑，务必看清楚）：
+		#   美术文档给的节奏是 1.1 / 0.7 / 0.6 / 0.8 和 0.5 / 0.7 / 0.9 / 1.6。
+		#   若直接按「秒」使用，总长 6.90 秒，而攻击间隔只有 0.42 秒 ——
+		#   动画永远播不完第一帧，角色会卡在攻击姿势上。
+		#   故按**相对权重**处理，归一化到文档声明的 10 fps（8 帧 = 0.8 秒）。
+		#   ⚠️ 该单位仍待与美术确认（秒？权重？1/10 秒？），
+		#      确认后请回来改成准确值。
+		#
+		# 另注意：0.8 秒仍 > 0.42 秒的攻击间隔。启用攻击动画前必须先解决这一点
+		#（缩短动画、或让动画不因重播而重置）。相关开关见 hero_unit.gd 的
+		# USE_ATTACK_ANIMATION（当前为 false，即本期不做攻击动画打断）。
 		_sheet(&"attack", SPRITES + "hero/ninja_attack.png", 8, 10.0, false,
-			PackedFloat32Array([1.1, 0.7, 0.6, 0.8, 0.5, 0.7, 0.9, 1.6])),
+			PackedFloat32Array([
+				0.1275, 0.0812, 0.0696, 0.0928, 0.0580, 0.0812, 0.1043, 0.1855,
+			])),
 	]
 	written += _save(ninja_set, "res://resources/characters/_spriteset_hero_ninja.tres")
 

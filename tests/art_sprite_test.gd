@@ -84,6 +84,7 @@ func _init() -> void:
 	print("=== 附加检查 ===")
 	_check_animation_speed_is_one()
 	_check_flip_exists()
+	_check_durations_sane()
 
 	print("")
 	if _fail == 0:
@@ -159,3 +160,53 @@ func _check_flip_exists() -> void:
 		_fail += 1
 		return
 	print("  [通过] SpriteAnimator.set_facing() 存在（左右朝向翻转）")
+
+
+## 检查动画总时长是否合理。
+##
+## 这条能拦住一次真实事故：美术给的攻击逐帧节奏被按「秒」理解，
+## 攻击动画总长变成 6.90 秒，而攻击间隔只有 0.42 秒 ——
+## 动画每 0.42 秒被重头播放，连第一帧都播不完，
+## 角色永远卡在攻击姿势上（"攻击停顿感"）。
+const MAX_SANE_ANIMATION_SECONDS: float = 2.0
+
+
+func _check_durations_sane() -> void:
+	_checks += 1
+	var rel_paths: Array[String] = [
+		CHARACTER_SET_DIR + "_spriteset_hero_ninja.tres",
+		CHARACTER_SET_DIR + "_spriteset_tower_archer.tres",
+		CHARACTER_SET_DIR + "_spriteset_tower_healer.tres",
+		ENEMY_SET_DIR + "_spriteset_melee_grunt.tres",
+		ENEMY_SET_DIR + "_spriteset_ranged_archer.tres",
+	]
+	var too_long: PackedStringArray = PackedStringArray()
+	var summary: PackedStringArray = PackedStringArray()
+
+	for path: String in rel_paths:
+		var sprite_set: UnitSpriteSet = load(path) as UnitSpriteSet
+		if sprite_set == null:
+			continue
+		var animator := SpriteAnimator.new()
+		var frames: SpriteFrames = animator.build_sprite_frames(sprite_set)
+		animator.free()
+		if frames == null:
+			continue
+		var file: String = path.get_file()
+		for anim: StringName in frames.get_animation_names():
+			var total: float = 0.0
+			for i: int in range(frames.get_frame_count(anim)):
+				total += frames.get_frame_duration(anim, i)
+			summary.append("%s/%s=%.2fs" % [file.trim_prefix("_spriteset_").trim_suffix(".tres"), anim, total])
+			if total > MAX_SANE_ANIMATION_SECONDS:
+				too_long.append("%s 的 %s 总长 %.2f 秒" % [file, anim, total])
+
+	if too_long.is_empty():
+		print("  [通过] 所有动画总时长均 ≤ %.1f 秒" % MAX_SANE_ANIMATION_SECONDS)
+		print("        %s" % ", ".join(summary))
+	else:
+		print("  [失败] 以下动画总时长异常长（逐帧时长单位可能理解错了）：")
+		for s: String in too_long:
+			print("        %s" % s)
+		print("        提示：逐帧时长很可能不是「秒」，而是相对权重或其它单位。")
+		_fail += 1
