@@ -23,6 +23,9 @@ const HEAL_FLASH_COLOR: Color = Color(0.55, 1.0, 0.70)
 ## 开火瞬间的"后坐"缩放（1.0 -> 1.1 -> 1.0）
 const ATTACK_PUNCH: float = 0.10
 
+## 受击闪白持续时长（秒）
+const HIT_FLASH_TIME: float = 0.12
+
 var data: CharacterData
 ## 所在塔位索引，供重建 / 合成系统使用
 var slot_index: int = -1
@@ -99,6 +102,8 @@ func bind_registry(registry: UnitRegistry) -> void:
 func _process(delta: float) -> void:
 	if _hit_flash > 0.0:
 		_hit_flash = maxf(0.0, _hit_flash - delta)
+		if animator != null:
+			animator.set_flash(_hit_flash / HIT_FLASH_TIME)
 		queue_redraw()
 
 	if _attack_flash > 0.0:
@@ -197,7 +202,9 @@ func _pick_lowest_health_hero() -> HeroUnit:
 # ─────────────────────────────────────────────
 
 func _on_damaged(_damage: Damage) -> void:
-	_hit_flash = 0.12
+	_hit_flash = HIT_FLASH_TIME
+	if animator != null:
+		animator.set_flash(1.0)
 	queue_redraw()
 
 

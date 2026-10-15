@@ -96,7 +96,11 @@ func slot_count() -> int:
 
 
 # ─────────────────────────────────────────────
-# 调试绘制：把路径、塔位、大本营画出来，方便没有美术时看清布局
+# 调试绘制：把路径与塔位画出来，方便没有美术时看清布局
+#
+# 注意：**大本营的画法不在这里** —— 自 M1 起由 entities/base_unit.gd
+# （BaseUnit）负责，因为大本营需要受击反馈、损毁状态与美术素材挂载，
+# 这些都不能放在地图脚本里。地图只提供 map_base 标记作为坐标。
 # ─────────────────────────────────────────────
 
 func _draw() -> void:
@@ -116,8 +120,3 @@ func _draw() -> void:
 		draw_arc(p, 9.0, 0.0, TAU, 20, SLOT_DEBUG_COLOR, 1.0)
 		draw_line(p + Vector2(-4, 0), p + Vector2(4, 0), SLOT_DEBUG_COLOR, 1.0)
 		draw_line(p + Vector2(0, -4), p + Vector2(0, 4), SLOT_DEBUG_COLOR, 1.0)
-
-	var bp: Vector2 = to_local(base_position())
-	draw_rect(Rect2(bp + Vector2(-14, -14), Vector2(28, 28)), BASE_DEBUG_COLOR, false, 2.0)
-	draw_line(bp + Vector2(-14, -14), bp + Vector2(14, 14), BASE_DEBUG_COLOR, 1.0)
-	draw_line(bp + Vector2(14, -14), bp + Vector2(-14, 14), BASE_DEBUG_COLOR, 1.0)

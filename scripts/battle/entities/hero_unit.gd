@@ -16,6 +16,8 @@ signal health_depleted()
 const PLACEHOLDER_COLOR: Color = Color(0.30, 0.85, 0.40)
 ## 占位方块与碰撞体尺寸。基于精灵实际渲染尺寸定（美术画布 32px，角色主体约 20px 宽）
 const PLACEHOLDER_SIZE: float = 20.0
+## 受击闪白持续时长（秒）
+const HIT_FLASH_TIME: float = 0.12
 
 ## 是否播放攻击动画。
 ##
@@ -124,6 +126,9 @@ func _tick_timers(delta: float) -> void:
 			_refresh_locomotion_animation()
 	if _hit_flash > 0.0:
 		_hit_flash = maxf(0.0, _hit_flash - delta)
+		# 精灵的受击闪白（占位方块走 _draw，精灵走 shader 材质）
+		if animator != null:
+			animator.set_flash(_hit_flash / HIT_FLASH_TIME)
 		queue_redraw()
 
 
@@ -231,7 +236,9 @@ func _refresh_locomotion_animation() -> void:
 # ─────────────────────────────────────────────
 
 func _on_damaged(_damage: Damage) -> void:
-	_hit_flash = 0.12
+	_hit_flash = HIT_FLASH_TIME
+	if animator != null:
+		animator.set_flash(1.0)
 	queue_redraw()
 
 

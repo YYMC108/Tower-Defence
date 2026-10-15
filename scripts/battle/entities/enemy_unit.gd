@@ -26,6 +26,14 @@ const RETARGET_INTERVAL: float = 0.15
 ## 正常移动是 36px/s ≈ 0.6px/帧，所以 0.25 能干净区分"真在走"与"被挤"。
 const MOVE_ANIM_THRESHOLD: float = 0.25
 
+## 受击闪白持续时长（秒）
+const HIT_FLASH_TIME: float = 0.12
+
+## 攻击反馈持续时长（秒）
+const ATTACK_FLASH_TIME: float = 0.18
+const ATTACK_COLOR_MELEE: Color = Color(1.0, 0.75, 0.45)
+const ATTACK_COLOR_RANGED: Color = Color(1.0, 0.55, 0.35)
+
 var data: EnemyData
 
 var health: HealthComponent
@@ -52,6 +60,10 @@ var _on_base_damage: Callable = Callable()
 ## 精灵动画（无素材时为 null，回退到占位绘制）
 var animator: SpriteAnimator
 var _current_anim: StringName = &"idle"
+
+## 攻击反馈（程序绘制，与美术的攻击特效不冲突）
+var _attack_flash: float = 0.0
+var _flash_to: Vector2 = Vector2.ZERO
 
 
 static func create(p_data: EnemyData, p_spawn_position: Vector2) -> EnemyUnit:
@@ -96,6 +108,7 @@ func _build_nodes() -> void:
 	# 有素材就用精灵，否则 _draw() 画占位方块/菱形
 	animator = SpriteAnimator.attach(self, data.sprite_set, data.sprite_scale)
 	if animator != null:
+		animator.on_animation_finished = _on_attack_animation_finished
 		animator.play_animation(&"idle")
 	queue_redraw()
 
@@ -175,6 +188,12 @@ func _physics_process(delta: float) -> void:
 		_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
 	if _hit_flash > 0.0:
 		_hit_flash = maxf(0.0, _hit_flash - delta)
+		if animator != null:
+			animator.set_flash(_hit_flash / HIT_FLASH_TIME)
+		queue_redraw()
+
+	if _attack_flash > 0.0:
+		_attack_flash = maxf(0.0, _attack_flash - delta)
 		queue_redraw()
 
 	# 在一处按**真实位移**统一决定动画与路径进度。
@@ -331,6 +350,7 @@ func _attack_hero(hero: HeroUnit) -> void:
 	if _attack_cooldown > 0.0 or hero.health == null:
 		return
 	_attack_cooldown = data.attack_interval
+	_play_attack_feedback(hero.global_position)
 	hero.health.apply_damage(Damage.new(data.attack_damage, self))
 
 
@@ -338,15 +358,41 @@ func _attack_base() -> void:
 	if _attack_cooldown > 0.0:
 		return
 	_attack_cooldown = data.attack_interval
+	_play_attack_feedback(_base_position)
 	if _on_base_damage.is_valid():
 		_on_base_damage.call(data.attack_damage)
 
 
 func _fire_at(target: Node2D) -> void:
 	_attack_cooldown = data.attack_interval
+	_play_attack_feedback(target.global_position)
 	var target_health: HealthComponent = target.get_node_or_null("HealthComponent") as HealthComponent
 	if target_health != null:
 		target_health.apply_damage(Damage.new(data.attack_damage, self))
+
+
+## 攻击反馈。分两层：
+##   1. 若素材提供了 attack 动画就播它（美术交付后自动生效，无需改代码）
+##   2. 程序绘制的反馈（近战=挥击弧，远程=弹道线），立即就有表现
+## 两者可叠加，所以美术素材到位前后都有反馈。
+func _play_attack_feedback(target_position: Vector2) -> void:
+	_attack_flash = ATTACK_FLASH_TIME
+	_flash_to = target_position
+	if animator != null:
+		# 有 attack 动画就播一遍（不循环），并按攻击间隔对齐播放速度
+		if animator.sprite_frames.has_animation(&"attack"):
+			animator.fit_animation_to(&"attack", data.attack_interval)
+			animator.play_animation(&"attack", true)
+	queue_redraw()
+
+
+## 攻击动画播完回到移动/待机
+func _on_attack_animation_finished(animation_name: StringName) -> void:
+	if animation_name == &"attack":
+		_current_anim = &"idle"
+		if animator != null:
+			animator.speed_scale = 1.0
+			animator.play_animation(&"idle")
 
 
 func _find_live_hero() -> HeroUnit:
@@ -368,7 +414,9 @@ func _find_live_hero() -> HeroUnit:
 # ─────────────────────────────────────────────
 
 func _on_damaged(_damage: Damage) -> void:
-	_hit_flash = 0.12
+	_hit_flash = HIT_FLASH_TIME
+	if animator != null:
+		animator.set_flash(1.0)
 	queue_redraw()
 
 
@@ -397,12 +445,18 @@ func path_progress() -> float:
 
 
 # ─────────────────────────────────────────────
-# 绘制（占位美术：有素材时完全交给精灵）
+# 绘制
+#   占位方块：仅在**没有素材**时画
+#   攻击反馈：一直画（有无素材都画；美术的攻击特效到位后可叠加）
 # ─────────────────────────────────────────────
 
 func _draw() -> void:
-	if has_sprite():
-		return
+	if not has_sprite():
+		_draw_placeholder()
+	_draw_attack_feedback()
+
+
+func _draw_placeholder() -> void:
 	var half: float = PLACEHOLDER_SIZE * 0.5
 	var body_color: Color = Color(0.85, 0.25, 0.25)
 	if data != null:
@@ -418,3 +472,29 @@ func _draw() -> void:
 			Vector2(0, -half), Vector2(half, 0), Vector2(0, half), Vector2(-half, 0),
 		])
 		draw_colored_polygon(points, body_color)
+
+
+## 攻击反馈：
+##   近战 —— 朝目标方向的挥击弧（读作"砍了一下"）
+##   远程 —— 弹道线（读作"射了一发"）
+func _draw_attack_feedback() -> void:
+	if _attack_flash <= 0.0:
+		return
+	var t: float = _attack_flash / ATTACK_FLASH_TIME
+	var to_target: Vector2 = _flash_to - global_position
+	var is_melee: bool = data != null and data.attack_mode == EnemyData.AttackMode.MELEE
+
+	if is_melee:
+		var col: Color = ATTACK_COLOR_MELEE
+		var dir: float = to_target.angle()
+		var reach: float = minf(to_target.length(), data.attack_range + 8.0)
+		# 挥击弧：从 -40° 扫到 +40°，随时间扩张并淡出
+		var sweep: float = 0.7 + 0.6 * (1.0 - t)
+		draw_arc(Vector2.ZERO, reach, dir - sweep, dir + sweep,
+			14, Color(col, t * 0.9), 2.0, true)
+		draw_arc(Vector2.ZERO, reach * 0.6, dir - sweep * 0.7, dir + sweep * 0.7,
+			10, Color(1, 1, 1, t * 0.5), 1.0, true)
+	else:
+		var col2: Color = ATTACK_COLOR_RANGED
+		draw_line(Vector2.ZERO, to_target, Color(col2, t * 0.8), 1.5, true)
+		draw_circle(to_target, 2.0 + 2.5 * t, Color(col2, t * 0.9))

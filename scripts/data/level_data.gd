@@ -23,6 +23,16 @@ extends Resource
 ## 本关开局给的局内资源（用于重建被摧毁的塔，本期只做展示）
 @export var starting_battle_currency: int = 10
 
+@export_group("大本营表现")
+## 大本营精灵动画。留空则用调试方框。
+## 可选动画：idle（必需）/ damaged（受损）/ critical（濒危）。
+## 血量跨过阈值会自动切换，素材只交 idle 也能跑。
+@export var base_sprite_set: UnitSpriteSet
+## 大本营显示缩放。大本营是视觉焦点，通常比单位大。
+@export var base_sprite_scale: float = 0.5
+## 无素材时的调试方框尺寸（游戏像素）。建议 2~3 格（32~48）。
+@export var base_display_size: Vector2 = Vector2(48, 48)
+
 @export_group("主角复活惩罚（递增 + 封顶，见 DESIGN.md 第 6 节）")
 ## 第 1 次死亡的复活时间
 @export var hero_revive_base_seconds: float = 5.0

@@ -10,6 +10,10 @@ extends AnimatedSprite2D
 ## 若 sprite_set 为空，attach 返回 null，单位保持原来的纯色方块占位绘制。
 ## 这样美术可以逐个交付素材，不需要等齐。
 
+## 受击闪白用的 shader。挂成材质后每帧设 flash 参数即可，
+## 与美术交付的受击特效 spritesheet 不冲突（可叠加）。
+const HIT_FLASH_SHADER: Shader = preload("res://scripts/battle/components/hit_flash.gdshader")
+
 ## 当前播放的动画名
 var _current: StringName = &""
 
@@ -38,6 +42,12 @@ static func attach(host: Node2D, sprite_set: UnitSpriteSet, display_scale: float
 	animator.centered = true
 	animator.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	animator.z_index = -1
+
+	# 受击闪白材质。每个单位一份实例，互不影响。
+	var flash_mat := ShaderMaterial.new()
+	flash_mat.shader = HIT_FLASH_SHADER
+	flash_mat.set_shader_parameter("flash", 0.0)
+	animator.material = flash_mat
 
 	var frames: SpriteFrames = animator.build_sprite_frames(sprite_set)
 	if frames == null or frames.get_animation_names().is_empty():
@@ -137,6 +147,19 @@ func set_facing(horizontal_direction: float) -> void:
 	if absf(horizontal_direction) < 0.01:
 		return
 	flip_h = horizontal_direction < 0.0
+
+
+## 设置受击闪白强度（0 = 正常，1 = 全白）。
+##
+## 为什么需要它：接入精灵后，原来的占位方块闪白逻辑（改绘制颜色）
+## 被 has_sprite() 短路了，导致「被打中」完全没有视觉反馈。
+## 材质是 per-instance 的，各单位互不影响。
+func set_flash(amount: float, color: Color = Color.WHITE) -> void:
+	var mat: ShaderMaterial = material as ShaderMaterial
+	if mat == null:
+		return
+	mat.set_shader_parameter("flash_color", Vector3(color.r, color.g, color.b))
+	mat.set_shader_parameter("flash", clampf(amount, 0.0, 1.0))
 
 
 func current_animation_name() -> StringName:

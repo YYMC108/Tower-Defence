@@ -28,6 +28,7 @@ var hud: BattleHUD
 var _map: TestLevelMap
 var _entities: Node2D
 var _hero: HeroUnit
+var _base: BaseUnit
 var _towers: Array[TowerUnit] = []
 var _base_position: Vector2 = Vector2.ZERO
 
@@ -41,6 +42,7 @@ func _ready() -> void:
 	_build_managers()
 	_build_map()
 	_build_entities_container()
+	_spawn_base()
 	_spawn_hero()
 	_spawn_towers()
 	_build_hud()
@@ -125,6 +127,16 @@ func _spawn_hero() -> void:
 	_hero.global_position = _map.hero_start_position()
 	_hero.bind_registry(registry)
 	_hero.died.connect(_on_hero_died)
+
+
+## 大本营。它之前只是地图脚本画的一个调试方框，没有实体节点，
+## 美术素材无处可挂。这里创建真正的节点并绑定战斗状态做受击反馈。
+func _spawn_base() -> void:
+	_base = BaseUnit.create(level.base_sprite_set, level.base_sprite_scale, level.base_display_size)
+	_entities.add_child(_base)
+	_base.global_position = _base_position
+	_base.bind_state(state)
+	_base.destroyed.connect(_on_base_visual_destroyed)
 
 
 func _spawn_towers() -> void:
@@ -238,6 +250,12 @@ func _on_base_take_damage(amount: float) -> void:
 
 func _on_base_destroyed() -> void:
 	# RoundManager 已连接 base_destroyed，这里只做表现
+	if hud != null:
+		hud.refresh()
+
+
+## 大本营节点的表现层收到"归零"通知（只做表现，胜负由 RoundManager 判定）
+func _on_base_visual_destroyed() -> void:
 	if hud != null:
 		hud.refresh()
 
