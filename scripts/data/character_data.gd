@@ -46,6 +46,15 @@ enum TowerKind {
 ## 详见 DESIGN.md 第 7 节。
 @export var copy_limit: int = 1
 
+@export_group("表现")
+## 精灵动画定义。留空则单位回退到纯色方块占位绘制。
+@export var sprite_set: UnitSpriteSet
+## 精灵显示缩放。美术按源生画布交付，这里缩到游戏内尺寸：
+##   主角 128px 画布 -> 0.25 -> 游戏内 32px
+##   塔   64px 画布 -> 0.5  -> 游戏内 32px
+## 见 DESIGN.md 第 15.12 节（美术接入尺度约定）。
+@export var sprite_scale: float = 1.0
+
 @export_group("解锁（局外）")
 @export var unlock_condition: String = ""
 @export var unlocked_by_default: bool = false

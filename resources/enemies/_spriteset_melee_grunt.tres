@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="UnitSpriteSet" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_sprite_set.gd" id="1_3r2c1"]
+[ext_resource type="Script" path="res://scripts/data/sprite_sheet_def.gd" id="2_ffffq"]
+
+[sub_resource type="Resource" id="Resource_w86qu"]
+script = ExtResource("2_ffffq")
+texture_path = "res://assets/sprites/enemies/melee_grunt_idle.png"
+fps = 5.0
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_vry00"]
+script = ExtResource("2_ffffq")
+animation_name = &"run"
+texture_path = "res://assets/sprites/enemies/melee_grunt_run.png"
+fps = 10.0
+frame_durations = PackedFloat32Array()
+
+[resource]
+script = ExtResource("1_3r2c1")
+sheets = [SubResource("Resource_w86qu"), SubResource("Resource_vry00")]

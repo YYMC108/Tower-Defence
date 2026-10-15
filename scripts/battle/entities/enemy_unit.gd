@@ -21,6 +21,11 @@ const PLACEHOLDER_SIZE: float = 11.0
 ## 远程索敌的重扫间隔（秒）。索敌是 N×M 扫描，不能每帧做。
 const RETARGET_INTERVAL: float = 0.15
 
+## 判定"在移动"的单帧位移阈值（像素）。
+## 拥挤排队时敌人会被互相挤动零点几像素，阈值太低会导致 idle/run 动画闪烁。
+## 正常移动是 36px/s ≈ 0.6px/帧，所以 0.25 能干净区分"真在走"与"被挤"。
+const MOVE_ANIM_THRESHOLD: float = 0.25
+
 var data: EnemyData
 
 var health: HealthComponent
@@ -43,6 +48,10 @@ var _is_dead: bool = false
 var _registry: UnitRegistry = null
 var _economy: BattleEconomy = null
 var _on_base_damage: Callable = Callable()
+
+## 精灵动画（无素材时为 null，回退到占位绘制）
+var animator: SpriteAnimator
+var _current_anim: StringName = &"idle"
 
 
 static func create(p_data: EnemyData, p_spawn_position: Vector2) -> EnemyUnit:
@@ -70,7 +79,8 @@ func _build_nodes() -> void:
 	var shape := CollisionShape2D.new()
 	shape.name = "BodyShape"
 	var circle := CircleShape2D.new()
-	circle.radius = PLACEHOLDER_SIZE * 0.5
+	# 与精灵实际渲染尺寸匹配（美术画布 32px，主体约占 24px 宽）
+	circle.radius = 12.0
 	shape.shape = circle
 	add_child(shape)
 
@@ -82,7 +92,25 @@ func _build_nodes() -> void:
 	health.damaged.connect(_on_damaged)
 
 	_build_detect_area()
+
+	# 有素材就用精灵，否则 _draw() 画占位方块/菱形
+	animator = SpriteAnimator.attach(self, data.sprite_set, data.sprite_scale)
+	if animator != null:
+		animator.play_animation(&"idle")
 	queue_redraw()
+
+
+func has_sprite() -> bool:
+	return animator != null
+
+
+## 根据是否在移动切换 idle / run。只在动画名变化时才调用，避免每帧重置。
+func _set_animation(animation_name: StringName) -> void:
+	if _current_anim == animation_name:
+		return
+	_current_anim = animation_name
+	if animator != null:
+		animator.play_animation(animation_name)
 
 
 ## 主角检测区。近战靠它判断"主角是否在仇恨范围内"。
@@ -149,10 +177,20 @@ func _physics_process(delta: float) -> void:
 		_hit_flash = maxf(0.0, _hit_flash - delta)
 		queue_redraw()
 
+	# 在一处按**真实位移**统一决定动画与路径进度。
+	# 之前把动画切换写在 _move_towards() 里，覆盖不到"进入攻击距离后停下"
+	# 的分支，导致站着打人的敌人还播着 run（视觉验证时发现）。
+	var before: Vector2 = global_position
 	if data.attack_mode == EnemyData.AttackMode.MELEE:
 		_tick_melee()
 	else:
 		_tick_ranged(delta)
+	var moved: float = before.distance_to(global_position)
+	_travelled += moved
+	_set_animation(&"run" if moved > MOVE_ANIM_THRESHOLD else &"idle")
+	# 朝向按实际行进方向翻转（路径若拐弯也需要）
+	if moved > MOVE_ANIM_THRESHOLD and animator != null:
+		animator.set_facing((global_position - before).x)
 
 
 ## 近战：主角优先，否则冲家
@@ -281,9 +319,8 @@ func _move_towards(point: Vector2) -> void:
 	if direction.length_squared() > 0.0001:
 		direction = direction.normalized()
 	velocity = direction * data.move_speed
-	var before: Vector2 = global_position
 	move_and_slide()
-	_travelled += before.distance_to(global_position)
+	# 路径进度与动画统一由 _physics_process 按真实位移处理（避免两处不一致）
 
 
 # ─────────────────────────────────────────────
@@ -360,10 +397,12 @@ func path_progress() -> float:
 
 
 # ─────────────────────────────────────────────
-# 绘制（占位美术：纯色方块）
+# 绘制（占位美术：有素材时完全交给精灵）
 # ─────────────────────────────────────────────
 
 func _draw() -> void:
+	if has_sprite():
+		return
 	var half: float = PLACEHOLDER_SIZE * 0.5
 	var body_color: Color = Color(0.85, 0.25, 0.25)
 	if data != null:

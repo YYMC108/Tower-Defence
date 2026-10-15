@@ -1,23 +1,18 @@
 [gd_resource type="Resource" script_class="CharacterData" format=3]
 
-[ext_resource type="Script" path="res://scripts/data/character_data.gd" id="1_cd"]
+[ext_resource type="Script" path="res://scripts/data/character_data.gd" id="1_4wu0c"]
+[ext_resource type="Resource" path="res://resources/characters/_spriteset_tower_archer.tres" id="2_ja1i1"]
 
 [resource]
-script = ExtResource("1_cd")
+script = ExtResource("1_4wu0c")
 id = &"tower_archer"
 display_name = "弓箭手塔"
-description = "输出塔。自动索敌攻击。塔是主角死亡时唯一还能守住防线的东西。"
-role = 1
+description = "输出塔。自动索敌攻击。主角死亡时它是唯一还能守住防线的东西。"
 tower_kind = 1
 max_health = 60.0
-move_speed = 0.0
 attack_damage = 9.0
 attack_interval = 0.95
 attack_range = 96.0
-damage_type = 0
-targeting_strategy = &"nearest"
-heal_amount = 0.0
-heal_interval = 2.0
-copy_limit = 1
-unlock_condition = ""
+sprite_set = ExtResource("2_ja1i1")
+sprite_scale = 0.5
 unlocked_by_default = true

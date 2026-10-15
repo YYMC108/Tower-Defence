@@ -6,17 +6,24 @@ extends CharacterBody2D
 ##   主角存活 → collision_layer 含 player 层 → 近战被挡住，只能攻击主角
 ##   主角死亡 → 关闭 collision_layer    → 近战直接穿过冲进大本营
 ## 所以"主角死亡的惩罚"不需要额外脚本，是碰撞规则自然长出来的。
+##
+## 表现层：有 sprite_set 时用精灵动画，否则回退纯色方块占位。
+## **动画不阻塞攻击判定** —— 动画长短不会影响 DPS（攻击按冷却走）。
 
 signal died()
 signal health_depleted()
 
 const PLACEHOLDER_COLOR: Color = Color(0.30, 0.85, 0.40)
-const PLACEHOLDER_SIZE: float = 14.0
+## 占位方块与碰撞体尺寸。基于精灵实际渲染尺寸定（美术画布 32px，角色主体约 20px 宽）
+const PLACEHOLDER_SIZE: float = 20.0
+## 攻击动画播放期间仍按此节奏判定，与 attack_interval 解耦
+const ATTACK_ANIM_TIMEOUT: float = 2.0
 
 var data: CharacterData
 
 var health: HealthComponent
 var targeting: TargetingComponent
+var animator: SpriteAnimator
 
 var _attack_cooldown: float = 0.0
 var _facing: Vector2 = Vector2.RIGHT
@@ -25,6 +32,9 @@ var _registry: UnitRegistry = null
 
 ## 绘制用：受击闪白计时
 var _hit_flash: float = 0.0
+## 当前动画与切换计时
+var _current_anim: StringName = &"idle"
+var _attack_anim_timer: float = 0.0
 
 
 static func create(p_data: CharacterData) -> HeroUnit:
@@ -68,6 +78,16 @@ func _build_nodes() -> void:
 	add_child(targeting)
 	targeting.setup(data.targeting_strategy)
 
+	# 有素材就用精灵，否则 _draw() 画占位方块
+	animator = SpriteAnimator.attach(self, data.sprite_set, data.sprite_scale)
+	if animator != null:
+		animator.on_animation_finished = _on_anim_finished
+		_set_animation(&"idle")
+
+
+func has_sprite() -> bool:
+	return animator != null
+
 
 func bind_registry(registry: UnitRegistry) -> void:
 	_registry = registry
@@ -86,6 +106,10 @@ func _physics_process(delta: float) -> void:
 func _tick_timers(delta: float) -> void:
 	if _attack_cooldown > 0.0:
 		_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
+	if _attack_anim_timer > 0.0:
+		_attack_anim_timer = maxf(0.0, _attack_anim_timer - delta)
+		if _attack_anim_timer <= 0.0:
+			_refresh_locomotion_animation()
 	if _hit_flash > 0.0:
 		_hit_flash = maxf(0.0, _hit_flash - delta)
 		queue_redraw()
@@ -100,6 +124,13 @@ func _handle_movement(_delta: float) -> void:
 		input_dir = input_dir.normalized()
 	velocity = input_dir * data.move_speed
 	move_and_slide()
+	# 只在非攻击状态下切换跑/待机与朝向。
+	# 朝向用**移动方向**（WASD），而不是鼠标方向 —— 跑动时应该面朝跑的方向。
+	if _attack_anim_timer <= 0.0:
+		var moving: bool = input_dir.length_squared() > 0.01
+		_set_animation(&"run" if moving else &"idle")
+		if moving and animator != null:
+			animator.set_facing(input_dir.x)
 
 
 func _handle_attack(_delta: float) -> void:
@@ -123,14 +154,56 @@ func _try_attack() -> void:
 	var target: Node2D = targeting.pick_target(global_position, data.attack_range, candidates)
 	if target == null:
 		return
+
+	# 判定照常按冷却走，动画只是表现 —— 动画再长也不会削 DPS
 	_attack_cooldown = data.attack_interval
 	_facing = (target.global_position - global_position).normalized()
 	queue_redraw()
+	_play_attack_animation()
 
 	var health_comp: HealthComponent = target.get_node_or_null("HealthComponent") as HealthComponent
 	if health_comp != null:
 		health_comp.apply_damage(Damage.new(data.attack_damage, self, data.damage_type))
 
+
+# ─────────────────────────────────────────────
+# 动画
+# ─────────────────────────────────────────────
+
+func _set_animation(animation_name: StringName) -> void:
+	_current_anim = animation_name
+	if animator != null:
+		animator.play_animation(animation_name)
+
+
+func _play_attack_animation() -> void:
+	if animator == null or not animator.sprite_frames.has_animation(&"attack"):
+		return
+	_attack_anim_timer = ATTACK_ANIM_TIMEOUT
+	# 攻击时朝向**瞄准方向**（鼠标），与跑动的朝向来源不同
+	animator.set_facing(_facing.x)
+	animator.play_animation(&"attack", true)
+
+
+func _on_anim_finished(finished: StringName) -> void:
+	if finished == &"attack":
+		_attack_anim_timer = 0.0
+		_refresh_locomotion_animation()
+
+
+func _refresh_locomotion_animation() -> void:
+	if _is_dead:
+		return
+	var moving: bool = Vector2(
+		Input.get_axis(&"move_left", &"move_right"),
+		Input.get_axis(&"move_up", &"move_down")
+	).length_squared() > 0.01
+	_set_animation(&"run" if moving else &"idle")
+
+
+# ─────────────────────────────────────────────
+# 受击与死亡
+# ─────────────────────────────────────────────
 
 func _on_damaged(_damage: Damage) -> void:
 	_hit_flash = 0.12
@@ -155,6 +228,8 @@ func revive() -> void:
 	visible = true
 	collision_layer = PhysicsLayers.bit(&"player")
 	health.revive_full()
+	_attack_anim_timer = 0.0
+	_set_animation(&"idle")
 	set_physics_process(true)
 	queue_redraw()
 
@@ -163,17 +238,15 @@ func is_alive() -> bool:
 	return not _is_dead
 
 
+## 无素材时才绘制占位方块与朝向线
 func _draw() -> void:
-	if _is_dead:
+	if _is_dead or has_sprite():
 		return
 	var half: float = PLACEHOLDER_SIZE * 0.5
 	var body_color: Color = PLACEHOLDER_COLOR
 	if _hit_flash > 0.0:
 		body_color = body_color.lerp(Color.WHITE, 0.7)
 
-	# 主体方块（占位美术）
 	draw_rect(Rect2(Vector2(-half, -half), Vector2(PLACEHOLDER_SIZE, PLACEHOLDER_SIZE)), body_color, true)
 	draw_rect(Rect2(Vector2(-half, -half), Vector2(PLACEHOLDER_SIZE, PLACEHOLDER_SIZE)), body_color.darkened(0.5), false, 1.0)
-
-	# 朝向指示（一条短线，方便看出面向哪边）
 	draw_line(Vector2.ZERO, _facing * (half + 5.0), Color.WHITE, 1.0)

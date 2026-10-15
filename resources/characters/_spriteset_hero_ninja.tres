@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="UnitSpriteSet" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_sprite_set.gd" id="1_qlegm"]
+[ext_resource type="Script" path="res://scripts/data/sprite_sheet_def.gd" id="2_c77vc"]
+
+[sub_resource type="Resource" id="Resource_82ctt"]
+script = ExtResource("2_c77vc")
+texture_path = "res://assets/sprites/hero/ninja_idle.png"
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_5l2uh"]
+script = ExtResource("2_c77vc")
+animation_name = &"run"
+texture_path = "res://assets/sprites/hero/ninja_run.png"
+fps = 11.1
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_mu77p"]
+script = ExtResource("2_c77vc")
+animation_name = &"attack"
+texture_path = "res://assets/sprites/hero/ninja_attack.png"
+fps = 10.0
+loop = false
+frame_durations = PackedFloat32Array()
+
+[resource]
+script = ExtResource("1_qlegm")
+sheets = [SubResource("Resource_82ctt"), SubResource("Resource_5l2uh"), SubResource("Resource_mu77p")]

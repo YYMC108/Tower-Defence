@@ -1,23 +1,18 @@
 [gd_resource type="Resource" script_class="CharacterData" format=3]
 
-[ext_resource type="Script" path="res://scripts/data/character_data.gd" id="1_cd"]
+[ext_resource type="Script" path="res://scripts/data/character_data.gd" id="1_mg5oi"]
+[ext_resource type="Resource" path="res://resources/characters/_spriteset_tower_healer.tres" id="2_psurq"]
 
 [resource]
-script = ExtResource("1_cd")
+script = ExtResource("1_mg5oi")
 id = &"tower_healer"
 display_name = "治疗塔"
 description = "治疗塔。主角唯一的回血手段，让治疗塔成为构筑必需。"
-role = 1
 tower_kind = 2
 max_health = 50.0
-move_speed = 0.0
-attack_damage = 0.0
-attack_interval = 2.0
 attack_range = 110.0
-damage_type = 1
-targeting_strategy = &"nearest"
 heal_amount = 6.0
 heal_interval = 1.6
-copy_limit = 1
-unlock_condition = ""
+sprite_set = ExtResource("2_psurq")
+sprite_scale = 0.5
 unlocked_by_default = true

@@ -29,8 +29,13 @@ func _init() -> void:
 	_check_int("rendering/textures/canvas_textures/default_texture_filter", 0, "Nearest(0)")
 	_check_str("display/window/stretch/scale_mode", "integer")
 	_check_str("display/window/stretch/mode", "canvas_items")
-	# ⚠️ aspect 曾经被 Godot 编辑器重写 project.godot 时删掉过，
-	#    导致窗口按 ignore 拉伸、像素非等比变形。这条是那之后补的，不要删。
+	# 📌 关于 aspect 的一个重要事实（我一开始判断错了，特此记下免得后人重踩）：
+	#    aspect 的**默认值就是 "keep"**，而 Godot 编辑器保存 project.godot 时
+	#    会把「等于默认值」的项当冗余**删掉**。所以那一行会反复消失，
+	#    但**有效值始终是 keep，行为没有问题**，不要去"修复"它。
+	#    本检查用 ProjectSettings.get_setting()，取的是**有效值**（会自动回落
+	#    到默认值），所以文件里没有那一行时同样能通过 —— 这正是我们要的：
+	#    校验行为，而不是校验文本。
 	_check_str("display/window/stretch/aspect", "keep")
 
 	print("=== 2. 视口 ===")

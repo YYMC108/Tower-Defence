@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="UnitSpriteSet" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_sprite_set.gd" id="1_1qbum"]
+[ext_resource type="Script" path="res://scripts/data/sprite_sheet_def.gd" id="2_nylk6"]
+
+[sub_resource type="Resource" id="Resource_3ctli"]
+script = ExtResource("2_nylk6")
+texture_path = "res://assets/sprites/enemies/ranged_archer_idle.png"
+fps = 5.0
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_kw6n8"]
+script = ExtResource("2_nylk6")
+animation_name = &"run"
+texture_path = "res://assets/sprites/enemies/ranged_archer_run.png"
+fps = 20.0
+frame_durations = PackedFloat32Array()
+
+[resource]
+script = ExtResource("1_1qbum")
+sheets = [SubResource("Resource_3ctli"), SubResource("Resource_kw6n8")]
