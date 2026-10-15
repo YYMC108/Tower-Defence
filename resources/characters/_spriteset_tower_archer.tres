@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UnitSpriteSet" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_sprite_set.gd" id="1_ejwyu"]
+[ext_resource type="Script" path="res://scripts/data/sprite_sheet_def.gd" id="2_ibfvj"]
+
+[sub_resource type="Resource" id="Resource_3aj3v"]
+script = ExtResource("2_ibfvj")
+texture_path = "res://assets/sprites/towers/tower_archer_idle.png"
+fps = 5.0
+frame_durations = PackedFloat32Array()
+
+[resource]
+script = ExtResource("1_ejwyu")
+sheets = [SubResource("Resource_3aj3v")]

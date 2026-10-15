@@ -15,6 +15,12 @@ enum AttackMode {
 @export var display_name: String = ""
 @export var placeholder_color: Color = Color(0.85, 0.25, 0.25)
 
+@export_group("表现")
+## 精灵动画定义。留空则回退到纯色方块占位绘制。
+@export var sprite_set: UnitSpriteSet
+## 精灵显示缩放。敌人源生画布 32px，游戏内即 32px，填 1.0。
+@export var sprite_scale: float = 1.0
+
 @export_group("伤害矩阵（DESIGN.md 第 3 节，最易实现错的地方）")
 ## 近战 = (true, false, true)：打主角、免疫塔、打大本营
 ## 远程 = (true, true, false)：打主角、打塔、不打大本营

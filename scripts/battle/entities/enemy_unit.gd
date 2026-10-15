@@ -44,6 +44,10 @@ var _registry: UnitRegistry = null
 var _economy: BattleEconomy = null
 var _on_base_damage: Callable = Callable()
 
+## 精灵动画（无素材时为 null，回退到占位绘制）
+var animator: SpriteAnimator
+var _current_anim: StringName = &"idle"
+
 
 static func create(p_data: EnemyData, p_spawn_position: Vector2) -> EnemyUnit:
 	var enemy := EnemyUnit.new()
@@ -70,7 +74,8 @@ func _build_nodes() -> void:
 	var shape := CollisionShape2D.new()
 	shape.name = "BodyShape"
 	var circle := CircleShape2D.new()
-	circle.radius = PLACEHOLDER_SIZE * 0.5
+	# 与精灵实际渲染尺寸匹配（美术画布 32px，主体约占 24px 宽）
+	circle.radius = 12.0
 	shape.shape = circle
 	add_child(shape)
 
@@ -82,7 +87,25 @@ func _build_nodes() -> void:
 	health.damaged.connect(_on_damaged)
 
 	_build_detect_area()
+
+	# 有素材就用精灵，否则 _draw() 画占位方块/菱形
+	animator = SpriteAnimator.attach(self, data.sprite_set, data.sprite_scale)
+	if animator != null:
+		animator.play_animation(&"idle")
 	queue_redraw()
+
+
+func has_sprite() -> bool:
+	return animator != null
+
+
+## 根据是否在移动切换 idle / run。只在动画名变化时才调用，避免每帧重置。
+func _set_animation(animation_name: StringName) -> void:
+	if _current_anim == animation_name:
+		return
+	_current_anim = animation_name
+	if animator != null:
+		animator.play_animation(animation_name)
 
 
 ## 主角检测区。近战靠它判断"主角是否在仇恨范围内"。
@@ -283,7 +306,10 @@ func _move_towards(point: Vector2) -> void:
 	velocity = direction * data.move_speed
 	var before: Vector2 = global_position
 	move_and_slide()
-	_travelled += before.distance_to(global_position)
+	var moved: float = before.distance_to(global_position)
+	_travelled += moved
+	# 动画跟随真实位移：被主角挡住原地踏步时播 idle，而不是空跑 run
+	_set_animation(&"run" if moved > 0.01 else &"idle")
 
 
 # ─────────────────────────────────────────────
@@ -360,10 +386,12 @@ func path_progress() -> float:
 
 
 # ─────────────────────────────────────────────
-# 绘制（占位美术：纯色方块）
+# 绘制（占位美术：有素材时完全交给精灵）
 # ─────────────────────────────────────────────
 
 func _draw() -> void:
+	if has_sprite():
+		return
 	var half: float = PLACEHOLDER_SIZE * 0.5
 	var body_color: Color = Color(0.85, 0.25, 0.25)
 	if data != null:

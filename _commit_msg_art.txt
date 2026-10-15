@@ -1,0 +1,33 @@
+feat(art): 接入美术素材的框架（数据驱动 + 缺素材优雅回退）
+
+接入方式：不写死任何尺寸，也不改任何已验证的手感数值。
+
+- SpriteSheetDef: 一张横排 spritesheet 的定义（帧数/帧率/循环/逐帧时长）
+  帧数可留空自动推断（宽度除以高度），正好绕过【文档写 8 帧、实际 16 帧】这类错记
+- UnitSpriteSet: 一个单位的全部动画，挂到 CharacterData / EnemyData
+- SpriteAnimator: 从 UnitSpriteSet 构建 SpriteFrames 并播放
+  - 用 AtlasTexture 逐帧切片，支持逐帧时长（表达蓄力慢、出手快）
+  - 贴图不存在时静默跳过，单位回退占位方块，素材可逐个交付不阻塞
+
+单位接入：
+- HeroUnit: idle/run/attack 三态；攻击动画不阻塞判定（动画长短不影响 DPS）
+- TowerUnit: 目前只有 idle；射程光圈保留为调试可视，画得更淡以免盖住精灵
+- EnemyUnit: 按真实位移切换 idle/run（被挡住原地踏步时播 idle 而非空跑）
+- 碰撞体尺寸按精灵实际渲染尺寸调整（主角 20px、敌人半径 12px）
+
+尺度约定（方案 B，保持 480x320 基准，不放大世界）：
+  主角 128px 画布 -> sprite_scale 0.25 -> 游戏内 32px
+  塔    64px 画布 -> sprite_scale 0.50 -> 游戏内 32px
+  敌人  32px 画布 -> sprite_scale 1.00 -> 游戏内 32px
+缩放只在 CharacterData / EnemyData.sprite_scale 一处定义（UnitSpriteSet
+不再重复持有），避免两处配置分叉导致【改了没生效】。
+
+附带：
+- hero_knight 重命名为 hero_ninja（对齐美术命名）
+- 新增 tools/gen_art_resources.gd 一次性生成上述资源
+  （不手写 .tres，避免内联子资源指错资源类导致属性静默丢失）
+
+验证：
+- 切帧正确性 35 项通过（含逐帧时长、区域偏移、帧数自动推断）
+- 接入验证通过（缺素材时 attach 返回 null、数值未变、配置单一来源）
+- 战斗冒烟测试 35 项仍全部通过

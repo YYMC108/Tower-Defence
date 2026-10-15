@@ -11,7 +11,8 @@ extends Node2D
 signal died()
 
 const PLACEHOLDER_COLOR: Color = Color(0.35, 0.62, 0.95)
-const PLACEHOLDER_SIZE: float = 12.0
+## 塔的精灵画布 64px、显示 32px。占位方块按显示尺寸画。
+const PLACEHOLDER_SIZE: float = 26.0
 
 var data: CharacterData
 ## 所在塔位索引，供重建 / 合成系统使用
@@ -19,6 +20,7 @@ var slot_index: int = -1
 
 var health: HealthComponent
 var targeting: TargetingComponent
+var animator: SpriteAnimator
 
 var _attack_cooldown: float = 0.0
 var _registry: UnitRegistry = null
@@ -61,6 +63,17 @@ func _build_nodes() -> void:
 	targeting.name = "TargetingComponent"
 	add_child(targeting)
 	targeting.setup(data.targeting_strategy)
+
+	# 有素材就用精灵，否则 _draw() 画占位方块
+	animator = SpriteAnimator.attach(self, data.sprite_set, data.sprite_scale)
+	if animator != null:
+		# 塔目前只有 idle 动画（美术侧尚未交付攻击动画，见 ART_HANDOVER.md 第八节）。
+		# 所以攻击时不切动画；等攻击动画到位再接。
+		animator.play_animation(&"idle")
+
+
+func has_sprite() -> bool:
+	return animator != null
 
 
 func bind_registry(registry: UnitRegistry) -> void:
@@ -157,10 +170,13 @@ func _on_died(_damage: Damage) -> void:
 
 
 # ─────────────────────────────────────────────
-# 绘制（占位美术：纯色方块）
+# 绘制
+#   占位方块 / 攻击指示线：仅在**没有素材**时画（有精灵就交给精灵表现）
+#   射程光圈：一直画，但放在单位下层（z_index=-1），否则会盖住其他单位
 # ─────────────────────────────────────────────
 
 func _draw() -> void:
+	var has_art: bool = has_sprite()
 	var half: float = PLACEHOLDER_SIZE * 0.5
 	var body_color: Color = PLACEHOLDER_COLOR
 	if data != null and data.tower_kind == CharacterData.TowerKind.HEAL:
@@ -168,13 +184,18 @@ func _draw() -> void:
 	if _hit_flash > 0.0:
 		body_color = body_color.lerp(Color.WHITE, 0.7)
 
-	# 射程提示（淡淡的圈）
+	# 射程光圈一直画（有无素材都保留，方便看防守覆盖）。
+	# 画得淡是因为 _draw() 在精灵之上，浓了会盖住塔本身。
 	if data != null:
-		draw_arc(Vector2.ZERO, data.attack_range, 0.0, TAU, 48, Color(body_color, 0.16), 1.0)
+		var arc_alpha: float = 0.10 if has_art else 0.16
+		draw_arc(Vector2.ZERO, data.attack_range, 0.0, TAU, 48, Color(body_color, arc_alpha), 1.0)
+
+	# 占位方块与攻击目标线仅在无素材时画
+	if has_art:
+		return
 
 	draw_rect(Rect2(Vector2(-half, -half), Vector2(PLACEHOLDER_SIZE, PLACEHOLDER_SIZE)), body_color, true)
 	draw_rect(Rect2(Vector2(-half, -half), Vector2(PLACEHOLDER_SIZE, PLACEHOLDER_SIZE)), body_color.darkened(0.5), false, 1.0)
 
-	# 攻击目标指示线
 	if _current_target != null and is_instance_valid(_current_target) and _current_target.is_inside_tree():
 		draw_line(Vector2.ZERO, to_local(_current_target.global_position), Color(body_color, 0.55), 1.0)

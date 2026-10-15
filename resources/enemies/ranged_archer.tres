@@ -1,22 +1,17 @@
 [gd_resource type="Resource" script_class="EnemyData" format=3]
 
-[ext_resource type="Script" path="res://scripts/data/enemy_data.gd" id="1_ed"]
+[ext_resource type="Script" path="res://scripts/data/enemy_data.gd" id="1_du0er"]
+[ext_resource type="Resource" path="res://resources/enemies/_spriteset_ranged_archer.tres" id="2_rsmdd"]
 
 [resource]
-script = ExtResource("1_ed")
+script = ExtResource("1_du0er")
 id = &"ranged_archer"
 display_name = "远程弓手"
 placeholder_color = Color(0.95, 0.55, 0.15, 1)
-can_damage_hero = true
-can_damage_tower = true
-can_damage_base = false
-attack_mode = 1
+sprite_set = ExtResource("2_rsmdd")
 attack_damage = 6.0
 attack_interval = 1.5
 attack_range = 108.0
-building_attack_range = 26.0
 max_health = 26.0
 move_speed = 30.0
-waypoint_reach_radius = 4.0
 hero_detect_radius = 90.0
-reward_battle_currency = 1

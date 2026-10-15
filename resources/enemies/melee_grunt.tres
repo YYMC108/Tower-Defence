@@ -1,22 +1,19 @@
 [gd_resource type="Resource" script_class="EnemyData" format=3]
 
-[ext_resource type="Script" path="res://scripts/data/enemy_data.gd" id="1_ed"]
+[ext_resource type="Script" path="res://scripts/data/enemy_data.gd" id="1_atink"]
+[ext_resource type="Resource" path="res://resources/enemies/_spriteset_melee_grunt.tres" id="2_sdp78"]
 
 [resource]
-script = ExtResource("1_ed")
+script = ExtResource("1_atink")
 id = &"melee_grunt"
 display_name = "近战小兵"
-placeholder_color = Color(0.85, 0.25, 0.25, 1)
-can_damage_hero = true
+sprite_set = ExtResource("2_sdp78")
 can_damage_tower = false
 can_damage_base = true
 attack_mode = 0
 attack_damage = 7.0
 attack_interval = 1.0
 attack_range = 26.0
-building_attack_range = 26.0
 max_health = 34.0
 move_speed = 36.0
-waypoint_reach_radius = 4.0
 hero_detect_radius = 76.0
-reward_battle_currency = 1
