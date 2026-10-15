@@ -21,6 +21,11 @@ const PLACEHOLDER_SIZE: float = 11.0
 ## 远程索敌的重扫间隔（秒）。索敌是 N×M 扫描，不能每帧做。
 const RETARGET_INTERVAL: float = 0.15
 
+## 判定"在移动"的单帧位移阈值（像素）。
+## 拥挤排队时敌人会被互相挤动零点几像素，阈值太低会导致 idle/run 动画闪烁。
+## 正常移动是 36px/s ≈ 0.6px/帧，所以 0.25 能干净区分"真在走"与"被挤"。
+const MOVE_ANIM_THRESHOLD: float = 0.25
+
 var data: EnemyData
 
 var health: HealthComponent
@@ -172,10 +177,17 @@ func _physics_process(delta: float) -> void:
 		_hit_flash = maxf(0.0, _hit_flash - delta)
 		queue_redraw()
 
+	# 在一处按**真实位移**统一决定动画与路径进度。
+	# 之前把动画切换写在 _move_towards() 里，覆盖不到"进入攻击距离后停下"
+	# 的分支，导致站着打人的敌人还播着 run（视觉验证时发现）。
+	var before: Vector2 = global_position
 	if data.attack_mode == EnemyData.AttackMode.MELEE:
 		_tick_melee()
 	else:
 		_tick_ranged(delta)
+	var moved: float = before.distance_to(global_position)
+	_travelled += moved
+	_set_animation(&"run" if moved > MOVE_ANIM_THRESHOLD else &"idle")
 
 
 ## 近战：主角优先，否则冲家
@@ -304,12 +316,8 @@ func _move_towards(point: Vector2) -> void:
 	if direction.length_squared() > 0.0001:
 		direction = direction.normalized()
 	velocity = direction * data.move_speed
-	var before: Vector2 = global_position
 	move_and_slide()
-	var moved: float = before.distance_to(global_position)
-	_travelled += moved
-	# 动画跟随真实位移：被主角挡住原地踏步时播 idle，而不是空跑 run
-	_set_animation(&"run" if moved > 0.01 else &"idle")
+	# 路径进度与动画统一由 _physics_process 按真实位移处理（避免两处不一致）
 
 
 # ─────────────────────────────────────────────
