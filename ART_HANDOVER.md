@@ -13,11 +13,11 @@
 
 | 文件 | 用途 | 画布/帧 | 帧数 | 帧率 | 循环 | 显示 |
 |---|---|---|---|---|---|---|
-| `hero/genji_idle.png` | 主角待机 | 128×128 | 4 | 8 fps | ✅ | ×1 |
-| `hero/genji_run.png` | 主角移动 | 128×128 | 8 | 11.1 fps | ✅ | ×1 |
-| `hero/genji_attack.png` | 主角攻击 + 收招 | **256×128** | 8 | 10 fps | ❌ | ×1 |
-| `hero/juno_idle.png` | 备用主角待机 | 128×128 | 1 | 5 fps | ✅ | ×1 |
-| `hero/juno_kick.png` | 备用主角踢击 | 128×128 | 13 | 15 fps | ❌ | ×1 |
+| `hero/ninja_idle.png` | 主角待机 | 128×128 | 4 | 8 fps | ✅ | ×1 |
+| `hero/ninja_run.png` | 主角移动 | 128×128 | 8 | 11.1 fps | ✅ | ×1 |
+| `hero/ninja_attack.png` | 主角攻击 + 收招 | **256×128** | 8 | 10 fps | ❌ | ×1 |
+| `hero/juno_idle.png` | 备用角色待机 | 128×128 | 1 | 5 fps | ✅ | ×1 |
+| `hero/juno_kick.png` | 备用角色踢击 | 128×128 | 13 | 15 fps | ❌ | ×1 |
 | `enemies/melee_grunt_idle.png` | 近战敌人待机 | 32×32 | 1 | 5 fps | ✅ | ×4 |
 | `enemies/melee_grunt_run.png` | 近战敌人移动 | 32×32 | 5 | 10 fps | ✅ | ×4 |
 | `enemies/ranged_archer_idle.png` | 远程敌人待机 | 32×32 | 1 | 5 fps | ✅ | ×4 |
@@ -26,7 +26,7 @@
 | `towers/tower_healer_idle.png` | 治疗塔 | 64×64 | 1 | 5 fps | ✅ | ×2 |
 
 > **全部是横排单行 spritesheet，逐帧等大**（符合 §15.4）。
-> `genji_attack.png` 前 4 帧是 `attack_1`、后 4 帧是 `recover_1`，两段都 **loop=false**，
+> `ninja_attack.png` 前 4 帧是 `attack_1`、后 4 帧是 `recover_1`，两段都 **loop=false**，
 > 每帧 duration 依次是 `1.1 / 0.7 / 0.6 / 0.8` 和 `0.5 / 0.7 / 0.9 / 1.6`（这是逐帧节奏，不是固定帧率）。
 
 ### 地形（`assets/tilesets/`）
@@ -145,15 +145,15 @@
 
 ---
 
-## 六、⚠️ 版权注意（重要）
+## 六、素材来源
 
 | 素材 | 状态 |
 |---|---|
-| 主角 **genji / juno** | ❌ **《守望先锋》角色，不能作为正式交付** |
+| 主角 **ninja**、备用 **juno** | ✅ 原创赛博角色，AI 辅助生成 + 多轮手工调整后定稿 |
 | 塔（两只猫）、敌人（机甲）、地形、UI | ✅ 原创 |
 
-**正式发布前主角必须换成原创角色。** 视觉语言（深蓝黑描边、青/品红/黄绿霓虹、冷灰金属、
-满明度范围）是通用赛博风格、不受版权保护，照着重新设计即可。
+视觉语言（深蓝黑描边、青/品红/黄绿霓虹、冷灰金属、满明度范围）见 `STYLE.md`，
+新角色继续沿用即可。
 
 ---
 
@@ -181,6 +181,6 @@
 
 **待策划确认**：
 
-- 源氏 / 朱诺在 roster 里是什么定位？（仓库现有 `hero_knight`，和我们这两个对不上）
+- ninja / juno 在 roster 里是什么定位？（仓库现有 `hero_knight`，和我们这两个对不上）
 - 塔的正式 ID 就是 `tower_archer` / `tower_healer` 吗？
 - 硬币（已归档，未进项目）要用在哪、显示多大？
