@@ -105,6 +105,32 @@ func play_animation(animation_name: StringName, restart: bool = false) -> void:
 	play(animation_name)
 
 
+## 某个动画完整播一遍需要的秒数
+func animation_total_duration(animation_name: StringName) -> float:
+	if sprite_frames == null or not sprite_frames.has_animation(animation_name):
+		return 0.0
+	var total: float = 0.0
+	for i: int in range(sprite_frames.get_frame_count(animation_name)):
+		total += sprite_frames.get_frame_duration(animation_name, i)
+	return total
+
+
+## 让某动画的播放时长正好等于 target_seconds。
+##
+## 用途：攻击动画应该「一次出手播一遍」。如果动画比攻击间隔长，
+## 就会每帧被重头播放、永远播不完，表现为角色卡在攻击姿势上；
+## 比间隔短则会有空档。这里按比例调整播放速度，使两者对齐。
+## 返回实际使用的播放时长（秒）。
+func fit_animation_to(animation_name: StringName, target_seconds: float) -> float:
+	var total: float = animation_total_duration(animation_name)
+	if total <= 0.0 or target_seconds <= 0.0:
+		speed_scale = 1.0
+		return total
+	# 播放速度 = 原时长 / 期望时长。上限 6 倍，避免极端攻速下快成闪烁。
+	speed_scale = clampf(total / target_seconds, 0.1, 6.0)
+	return total / speed_scale
+
+
 ## 按水平朝向翻转精灵（素材只交付单朝向，左右靠引擎翻转）。
 ## horizontal_direction 接近 0 时保持当前朝向 —— 避免纯上下移动时来回抖动。
 func set_facing(horizontal_direction: float) -> void:

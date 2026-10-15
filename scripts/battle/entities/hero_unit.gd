@@ -16,26 +16,20 @@ signal health_depleted()
 const PLACEHOLDER_COLOR: Color = Color(0.30, 0.85, 0.40)
 ## 占位方块与碰撞体尺寸。基于精灵实际渲染尺寸定（美术画布 32px，角色主体约 20px 宽）
 const PLACEHOLDER_SIZE: float = 20.0
-## 攻击动画播放期间仍按此节奏判定，与 attack_interval 解耦
-const ATTACK_ANIM_TIMEOUT: float = 2.0
 
-## 是否用攻击动画打断移动动画。
+## 是否播放攻击动画。
 ##
-## ⚠️ 本期**刻意关闭**，原因是踩过一次坑：
-##   美术给的攻击逐帧节奏 1.1/0.7/0.6/0.8/0.5/0.7/0.9/1.6 被按「秒」理解，
-##   于是攻击动画总长 **6.90 秒**，而攻击间隔只有 **0.42 秒**。
-##   攻击时每 0.42 秒就 play(restart=true) 重播一次 —— 连第一帧（1.1 秒）
-##   都播不完，角色**永远卡在攻击姿势第一帧**，表现为明显的「攻击停顿感」。
+## 曾经因为两个问题被临时关闭，现已修好并重新开启：
+##   1. 美术给的攻击逐帧节奏 1.1/0.7/0.6/0.8/0.5/0.7/0.9/1.6 被按「秒」理解，
+##      攻击动画总长变成 6.90 秒 —— 已按相对权重归一化到 0.80 秒。
+##   2. 动画（0.80 秒）比攻击间隔（0.42 秒）长 —— 每 0.42 秒就被重头播放，
+##      连第一帧都播不完，角色卡在攻击姿势上（"攻击停顿感"）。
+##      **现在改成按攻击间隔动态调整播放速度**（见 _play_attack_animation），
+##      一次出手正好播完一遍，既看得见动画、又不卡顿。
 ##
-## 关闭后：攻击不改变角色的移动/待机动画与朝向，手感与接入美术前一致
-##（攻击判定本来就独立于动画，DPS 从未受影响）。
-##
-## 重新开启前需要先定两件事：
-##   1. 那组 duration 的单位到底是什么（秒？相对权重？还是 1/10 秒？）
-##   2. 攻击动画时长必须 ≤ 攻击间隔，否则永远播不完
-##      （按 10 fps 算 8 帧 = 0.8 秒，仍大于 0.42 秒的间隔）
-## 攻击动画数据与配置都已保留，定好之后把本开关改成 true 即可。
-const USE_ATTACK_ANIMATION: bool = false
+## 若将来要临时关掉，把本开关改成 false 即可 —— 关闭时攻击不改变移动动画，
+## 手感等同于没有攻击动画的版本。
+const USE_ATTACK_ANIMATION: bool = true
 
 var data: CharacterData
 
@@ -196,17 +190,21 @@ func _try_attack() -> void:
 func _set_animation(animation_name: StringName) -> void:
 	_current_anim = animation_name
 	if animator != null:
+		# 移动/待机用原始速度（攻击动画会临时改 speed_scale，这里复位）
+		animator.speed_scale = 1.0
 		animator.play_animation(animation_name)
 
 
 func _play_attack_animation() -> void:
-	# 本期关闭（见 USE_ATTACK_ANIMATION 的说明）：不打断移动动画。
-	# 攻击判定不受影响 —— 它本来就独立于动画，DPS 与手感保持接入美术前的状态。
 	if not USE_ATTACK_ANIMATION:
 		return
 	if animator == null or not animator.sprite_frames.has_animation(&"attack"):
 		return
-	_attack_anim_timer = ATTACK_ANIM_TIMEOUT
+	# 关键：让一次攻击动画正好铺满一个攻击间隔。
+	# 若动画比间隔长，就会被反复重头播放而永远播不完 → 看起来像卡住；
+	# 这里按比例加快播放，使其与出手节奏精确对齐。
+	var playback: float = animator.fit_animation_to(&"attack", data.attack_interval)
+	_attack_anim_timer = maxf(playback, 0.05)
 	# 攻击时朝向**瞄准方向**（鼠标），与跑动的朝向来源不同
 	animator.set_facing(_facing.x)
 	animator.play_animation(&"attack", true)
