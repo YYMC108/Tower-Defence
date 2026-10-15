@@ -9,54 +9,51 @@
 
 ## 一、交付清单
 
-### 角色（`assets/sprites/`）
+> ⚙️ **本表由 `tools/_dump_delivery_table.gd` 从工程实际资源读出后自动生成，不要手改。**
+> 手写版曾经严重落后（主角还写着已被替换掉的 8 帧两段攻击）。资源变了就重跑一次、重新粘进来。
 
 | 文件 | 用途 | 画布/帧 | 帧数 | 帧率 | 循环 | 显示 |
 |---|---|---|---|---|---|---|
-| `hero/ninja_idle.png` | 主角待机 | 128×128 | 4 | 8 fps | ✅ | ×1 |
-| `hero/ninja_run.png` | 主角移动 | 128×128 | 8 | 11.1 fps | ✅ | ×1 |
-| `hero/ninja_attack.png` | 主角攻击 + 收招 | **256×128** | 8 | 10 fps | ❌ | ×1 |
-| `enemies/melee_grunt_idle.png` | 近战敌人待机 | 32×32 | 1 | 5 fps | ✅ | ×4 |
-| `enemies/melee_grunt_run.png` | 近战敌人移动 | 32×32 | 5 | 10 fps | ✅ | ×4 |
-| `enemies/ranged_archer_idle.png` | 远程敌人待机 | 32×32 | 1 | 5 fps | ✅ | ×4 |
-| `enemies/ranged_archer_run.png` | 远程敌人移动 | 32×32 | 16 | 20 fps | ✅ | ×4 |
-| `towers/tower_archer_idle.png` | 弓箭塔 | 64×64 | 1 | 5 fps | ✅ | ×2 |
-| `towers/tower_healer_idle.png` | 治疗塔 | 64×64 | 1 | 5 fps | ✅ | ×2 |
+| `enemies/melee_brute_idle.png` | idle | 32×32 | 1 | 5.0 fps | ✅ | ×4 |
+| `enemies/melee_brute_run.png` | run | 64×32 | 7 | 8.0 fps | ✅ | ×4 |
+| `enemies/melee_brute_attack.png` | attack | 64×32 | 13 | 10.0 fps | ❌ | ×4 |
+| `enemies/melee_brute_hurt.png` | hurt | 32×32 | 2 | 12.0 fps | ❌ | ×4 |
+| `enemies/melee_grunt_idle.png` | idle | 32×32 | 1 | 5.0 fps | ✅ | ×4 |
+| `enemies/melee_grunt_run.png` | run | 32×32 | 5 | 10.0 fps | ✅ | ×4 |
+| `enemies/melee_grunt_attack.png` | attack | 32×32 | 5 | 12.0 fps | ❌ | ×4 |
+| `enemies/melee_grunt_hurt.png` | hurt | 32×32 | 2 | 12.0 fps | ❌ | ×4 |
+| `hero/ninja_idle.png` | idle | 128×128 | 4 | 8.0 fps | ✅ | ×1 |
+| `hero/ninja_run.png` | run | 128×128 | 8 | 11.11 fps | ✅ | ×1 |
+| `hero/ninja_attack_1.png` | attack_1 | 384×256 | 4 | 12.0 fps | ❌ | ×1 |
+| `hero/ninja_attack_2.png` | attack_2 | 384×256 | 4 | 12.0 fps | ❌ | ×1 |
+| `hero/ninja_attack_3.png` | attack_3 | 384×256 | 5 | 12.0 fps | ❌ | ×1 |
+| `hero/ninja_hurt.png` | hurt | 128×128 | 2 | 12.0 fps | ❌ | ×1 |
+| `enemies/ranged_archer_idle.png` | idle | 32×32 | 1 | 5.0 fps | ✅ | ×4 |
+| `enemies/ranged_archer_run.png` | run | 32×32 | 16 | 20.0 fps | ✅ | ×4 |
+| `enemies/ranged_archer_attack.png` | attack | 32×32 | 7 | 12.0 fps | ❌ | ×4 |
+| `enemies/ranged_archer_reload.png` | reload | 32×32 | 7 | 10.0 fps | ❌ | ×4 |
+| `enemies/ranged_archer_hurt.png` | hurt | 32×32 | 2 | 12.0 fps | ❌ | ×4 |
+| `towers/tower_archer_idle.png` | idle | 64×64 | 1 | 5.0 fps | ✅ | ×2 |
+| `towers/tower_healer_idle.png` | idle | 64×64 | 1 | 5.0 fps | ✅ | ×2 |
+| `effects/fx_slash_red.png` | 特效 | 32×32 | 3 | 16.0 fps | ❌ | ×4 |
+| `props/base.png` | 场景 / 道具 | 256×256 | — | — | — | 底边=地面线 |
+| `tilesets/tile_concrete_01.png` | 地形 | 64×64 | — | — | — | ×4 |
+| `tilesets/tile_concrete_04.png` | 地形 | 64×64 | — | — | — | ×4 |
+| `tilesets/tile_grass_01.png` | 地形 | 64×64 | — | — | — | ×4 |
+| `tilesets/tile_grass_02.png` | 地形 | 64×64 | — | — | — | ×4 |
+| `tilesets/tile_grass_03.png` | 地形 | 64×64 | — | — | — | ×4 |
+| `tilesets/tile_grate_01.png` | 地形 | 64×64 | — | — | — | ×4 |
+| `tilesets/tile_path_01.png` | 地形 | 64×64 | — | — | — | ×4 |
+| `ui/marker_tower_a_blocked.png` | UI | 128×128 | — | — | — | ×2 |
+| `ui/marker_tower_a_bracket.png` | UI | 128×128 | — | — | — | ×2 |
 
-> **全部是横排单行 spritesheet，逐帧等大**（符合 §15.4）。
-> **`ss_angel`（射手天使）不在交付范围内。**
-> 它只作为**动作参考**（踢击的 13 帧节奏），不会进游戏素材。
-> 需要在美术实验工程里查看：`demo/assets/characters/ss_angel/`。
-> `ninja_attack.png` 前 4 帧是 `attack_1`、后 4 帧是 `recover_1`，两段都 **loop=false**，
-> 每帧 duration 依次是 `1.1 / 0.7 / 0.6 / 0.8` 和 `0.5 / 0.7 / 0.9 / 1.6`（这是逐帧节奏，不是固定帧率）。
+**说明**
 
-### 地形（`assets/tilesets/`）
-
-7 张，全部 64×64、无缝可平铺、硬边 alpha：
-
-| 文件 | 内容 |
-|---|---|
-| `tile_grass_01/02/03.png` | 浅色草地 / 深色草地 / 白花草地 |
-| `tile_path_01.png` | 石砖路 |
-| `tile_concrete_01.png` | 素水泥（都市地面） |
-| `tile_concrete_04.png` | 旧水泥 + 裂缝 |
-| `tile_grate_01.png` | 排水格栅（点缀用） |
-
-### UI（`assets/sprites/ui/`）
-
-| 文件 | 用途 | 尺寸 |
-|---|---|---|
-| `marker_tower_a_bracket.png` | 塔位标记 · **可建造**（青） | 128×128 |
-| `marker_tower_a_blocked.png` | 塔位标记 · **不可建造**（红 + ×） | 128×128 |
-
-> 128×128 = **2×2 格**，和塔的占位完全对齐（玩家一眼看出塔占多大）。
-> 内部空心不遮地面；需要更淡就调节点 `modulate`（素材 alpha 是硬边）。
-
-### 调色板
-
-`assets/palette/td_art.gpl` —— **136 色**，按来源分组，覆盖全部素材。
-
----
+- `画布/帧` 是**单帧画布**尺寸，同一张 spritesheet 内所有帧等大（§15.4 铁律）
+- `显示` 是该角色在游戏里的渲染倍率：**主角 ×1 / 塔 ×2 / 敌人 ×4** ——
+  都是为了让单位渲染成 **128 游戏像素**（2×2 格）
+- 主角三段的画布是 **384×256**（128 装不下挥剑弧线），显示仍是 **×1**，锚点见第四节
+- 调色板 `assets/palette/td_art.gpl` 覆盖上表全部素材
 
 ## 二、⚠️ 与 `ART_SPEC.md` 的差异（**接入前务必先看这节**）
 
@@ -174,14 +171,17 @@
 
 | 优先级 | 项目 |
 |---|---|
-| 🟢 | `melee_brute`（近战重装敌人）的 `idle` + `run` |
-| 🟢 | 大本营 |
-| 🟢 | 特效 / UI 图标 |
+| 🟢 | `melee_brute`（近战重装敌人）的 `idle` + `run` （整个角色还没做） |
+| 🟢 | UI 图标 / 技能图标 |
+| ⚪ | 死亡消失特效 `fx_death_burst`（美术侧暂缓） |
 | — | 其他角色的 idle 呼吸帧（现在多是 1 帧） |
-| — | 主角原创化（见第六节） |
+| — | 塔的 `attack` / `heal` —— **已决定不做**，塔的行为用特效代替 |
+| ✅ | ~~大本营~~ 已完成（`assets/props/base/`） |
+| ✅ | ~~主角原创化~~ 已完成（见第六节） |
 
 **待策划确认**：
 
 - ninja 在 roster 里是什么定位？（仓库现有 `hero_knight`，和我们这两个对不上）
 - 塔的正式 ID 就是 `tower_archer` / `tower_healer` 吗？
 - 硬币（已归档，未进项目）要用在哪、显示多大？
+- **`healerrobot`（医疗机器人）在 roster 里是什么定位？** 仓库现有 `tower_healer` 已经是治疗塔，所以它应该是别的位置
