@@ -63,15 +63,25 @@ func _build() -> void:
 	add_child(_center_label)
 
 	# 底部操作提示
+	#
+	# ⚠️ 别写成 `set_anchors_preset(PRESET_BOTTOM_WIDE)` 就完事 —— 新建 Control 的
+	# size 是 (0,0)，锚到底部后它的矩形会**从 y=视口高 往下长**，整行画到屏幕外面。
+	# （实测：rect=(24, 960, 1512x42)，视口高正是 960 → 完全不可见，而且不报任何错。）
+	# 这里用「全屏容器 + 子容器垂直贴底」，与左上角那块同一套机制，不必手算偏移。
 	var bottom := MarginContainer.new()
 	bottom.name = "BottomHint"
-	bottom.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	bottom.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bottom.add_theme_constant_override("margin_left", 8 * UI_SCALE)
 	bottom.add_theme_constant_override("margin_bottom", 4 * UI_SCALE)
 	add_child(bottom)
 
-	_hint_label = _make_label(bottom, Color(0.75, 0.75, 0.80), FONT_SIZE_SMALL)
-	_hint_label.text = "WASD/方向键 移动   ·   连点鼠标左键 三段连招   ·   回车 开始下一波   ·   Backspace 认输"
+	var bottom_row := VBoxContainer.new()
+	bottom_row.name = "BottomRow"
+	bottom_row.size_flags_vertical = Control.SIZE_SHRINK_END
+	bottom.add_child(bottom_row)
+
+	_hint_label = _make_label(bottom_row, Color(0.75, 0.75, 0.80), FONT_SIZE_SMALL)
+	_hint_label.text = "WASD/方向键 移动   ·   连点鼠标左键 三段连招（攻击时定身）   ·   回车 开始下一波   ·   Backspace 认输"
 
 
 func _make_label(parent: Node, color: Color, font_size: int) -> Label:

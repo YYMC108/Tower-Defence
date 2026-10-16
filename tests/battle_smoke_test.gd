@@ -1,4 +1,4 @@
-extends Node
+﻿extends Node
 ## 战斗循环冒烟测试（集成测试）。
 ##
 ## 运行方式（**必须以场景方式运行**，因为 --script 模式不会注册 autoload）：
@@ -248,7 +248,39 @@ func _run() -> void:
 		_check(false, "主角或精灵动画不可用，无法验证连招")
 
 	print("")
-	print("--- 9. 复活惩罚曲线递增与封顶 ---")
+	print("--- 9. 攻击时定身（不能边跑边打）---")
+	if hero != null:
+		# 策划实测反馈：主角能一边移动一边攻击太强了，出手必须有代价。
+		hero.global_position = Vector2(250, 120)
+		hero.set("_attack_cooldown", 0.0)
+		hero.call("_try_attack")
+		_check(hero.call("is_attack_in_progress") == true,
+			"出手后进入定身状态（当前动画 %s）" % String(hero.animator.get_animation()))
+
+		# 定身期间按住移动键，位置不应变化
+		var pos_locked: Vector2 = hero.global_position
+		Input.action_press(&"move_right")
+		await _advance(0.2)
+		var moved_locked: float = pos_locked.distance_to(hero.global_position)
+		Input.action_release(&"move_right")
+		_check(moved_locked < 1.0,
+			"定身期间按住移动键也不位移（移动了 %.1f px）" % moved_locked)
+
+		# 攻击结束后应恢复移动
+		await _advance(0.6)
+		_check(hero.call("is_attack_in_progress") == false, "攻击结束后解除定身")
+		var pos_free: Vector2 = hero.global_position
+		Input.action_press(&"move_right")
+		await _advance(0.2)
+		var moved_free: float = pos_free.distance_to(hero.global_position)
+		Input.action_release(&"move_right")
+		_check(moved_free > 5.0,
+			"解除定身后可以移动（移动了 %.1f px，速度 %.0f px/s）" % [
+				moved_free, hero.data.move_speed,
+			])
+
+	print("")
+	print("--- 10. 复活惩罚曲线递增与封顶 ---")
 	var lvl: LevelData = _battle.level
 	var curve: PackedFloat32Array = PackedFloat32Array()
 	for i: int in range(1, 9):
@@ -260,7 +292,7 @@ func _run() -> void:
 	_check(is_equal_approx(curve[7], 30.0), "第 8 次 = 30 秒（已封顶）")
 
 	print("")
-	print("--- 10. 波次清空与胜负判定 ---")
+	print("--- 11. 波次清空与胜负判定 ---")
 	# 35 秒足够：诊断实测整局在 ~18 秒内结束（塔会把近战清光）。
 	var cleared: bool = false
 	var waited3: float = 0.0
@@ -283,6 +315,36 @@ func _run() -> void:
 		print("  → 结果是【胜利】")
 	else:
 		print("  → 结果是【大本营陷落】（headless 下主角不攻击，属预期）")
+
+	print("")
+	print("--- 12. HUD 文字控件必须落在视口内 ---")
+	# 这条拦住一个真实 bug：底部操作提示用 PRESET_BOTTOM_WIDE 挂在零尺寸的
+	# 新建 Control 上，矩形从 y=视口高 往下长 → 整行画到屏幕外、界面空白，
+	# **但完全不报错**。只有断言控件矩形在视口内才能发现。
+	var vp: Vector2 = get_viewport().get_visible_rect().size
+	var hud_fields: Array[String] = [
+		"_base_label", "_wave_label", "_enemy_label", "_currency_label",
+		"_phase_label", "_hint_label", "_center_label",
+	]
+	var off_screen: PackedStringArray = PackedStringArray()
+	for field: String in hud_fields:
+		var c: Control = _battle.hud.get(field) as Control
+		if c == null:
+			off_screen.append("%s 不存在" % field)
+			continue
+		var r: Rect2 = c.get_global_rect()
+		var inside: bool = r.position.x >= -1.0 and r.position.y >= -1.0 \
+			and r.end.x <= vp.x + 1.0 and r.end.y <= vp.y + 1.0 \
+			and r.size.x > 0.0 and r.size.y > 0.0
+		if not inside:
+			off_screen.append("%s rect=(%.0f,%.0f %.0fx%.0f)" % [
+				field, r.position.x, r.position.y, r.size.x, r.size.y,
+			])
+	_check(off_screen.is_empty(),
+		"HUD 的 %d 个文字控件都落在视口 %s 内%s" % [
+			hud_fields.size(), str(vp),
+			"" if off_screen.is_empty() else "（越界：%s）" % ", ".join(off_screen),
+		])
 
 	_finish()
 

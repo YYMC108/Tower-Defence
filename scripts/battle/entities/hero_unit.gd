@@ -135,8 +135,10 @@ func _physics_process(delta: float) -> void:
 	if _is_dead:
 		return
 	_tick_timers(delta)
-	_handle_movement(delta)
+	# 先处理出手，再处理移动 —— 这样"这一帧点了鼠标"就能当帧定身，
+	# 而不是白走一帧再停（顺序反了会有一帧的滑动）。
 	_handle_attack(delta)
+	_handle_movement(delta)
 
 
 func _tick_timers(delta: float) -> void:
@@ -160,7 +162,26 @@ func _tick_timers(delta: float) -> void:
 		queue_redraw()
 
 
+## 攻击期间**定身**：不允许移动。
+##
+## 为什么：主角能边跑边打太强了 —— 出手没有任何代价，可以一直保持距离风筝，
+## 也不会被近战追上。定身让每次出手变成一次选择（要不要停下来打这一下），
+## 这也是"主角是唯一物理阻挡"这条设计能成立的前提：想挡住敌人就得停下来站着打。
+##
+## ⚠️ **只锁攻击，不锁受击**：被打到已经扣血了，不该再额外剥夺一次行动权
+## （否则被围殴时会连续罚站，体验很差）。
+func is_attack_in_progress() -> bool:
+	return _oneshot_timer > 0.0 and _oneshot_anim.begins_with(COMBO_ANIM_PREFIX)
+
+
 func _handle_movement(_delta: float) -> void:
+	if is_attack_in_progress():
+		# 定身：速度清零、保持当前姿态与朝向（朝向由攻击那段动画负责）。
+		# 仍然调用 move_and_slide()，让残留速度干净地停住。
+		velocity = Vector2.ZERO
+		move_and_slide()
+		return
+
 	var input_dir := Vector2(
 		Input.get_axis(&"move_left", &"move_right"),
 		Input.get_axis(&"move_up", &"move_down")
