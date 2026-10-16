@@ -225,6 +225,25 @@ func _run() -> void:
 		_check(flash_val > 0.5, "受击闪白同时生效（flash = %.2f）" % flash_val)
 		_check(hero.call("is_oneshot_active") == true,
 			"一次性动画锁生效（受击期间不被移动动画覆盖）")
+
+		# 空挥：把主角挪到射程内没有敌人的地方，出手同样要播动画并炸特效。
+		# 这条是策划实测时提出的需求 —— 空地上连点鼠标必须有反应，
+		# 否则根本没法规察三段连招的手感。
+		# 位置 (250,120) 远离敌人走廊（y=480），且距走廊 > 敌人仇恨半径 304。
+		hero.global_position = Vector2(250, 120)
+		hero.set("_attack_cooldown", 0.0)
+		await _advance(0.05)
+		var nearest: Array[Node2D] = _battle.registry.query_enemies_in_radius(
+			hero.global_position, hero.data.attack_range)
+		var fx_before: int = _hit_effect_count()
+		hero.call("_try_attack")
+		await get_tree().process_frame
+		var anim_now: String = String(hero.animator.get_animation())
+		_check(nearest.is_empty(), "空挥测试位置射程内确实没有敌人（%d 个）" % nearest.size())
+		_check(anim_now.begins_with("attack_"),
+			"空挥也播放攻击动画（当前 %s）" % anim_now)
+		_check(_hit_effect_count() > fx_before,
+			"空挥也生成挥击特效（%d → %d）" % [fx_before, _hit_effect_count()])
 	else:
 		_check(false, "主角或精灵动画不可用，无法验证连招")
 
@@ -296,6 +315,17 @@ func _first_enemy() -> Node2D:
 	if enemies.is_empty():
 		return null
 	return enemies[0]
+
+
+## 场上现存的命中特效数量（用于断言"出手真的炸了特效"）
+func _hit_effect_count() -> int:
+	if HitEffectSpawner.instance == null or not is_instance_valid(HitEffectSpawner.instance):
+		return 0
+	var n: int = 0
+	for c: Node in HitEffectSpawner.instance.get_children():
+		if c is AnimatedSprite2D:
+			n += 1
+	return n
 
 
 func _finish() -> void:

@@ -39,6 +39,9 @@ const COMBO_LENGTH: int = 3
 const COMBO_RESET_SECONDS: float = 1.2
 ## 连招动画名前缀（attack_1 / attack_2 / attack_3）
 const COMBO_ANIM_PREFIX: String = "attack_"
+## 空挥时挥击特效放在身前多远（攻击射程的比例）。
+## 取 0.55：既在角色身体之外（精灵 128px，半身约 64px），又不超过实际打击距离。
+const WHIFF_DISTANCE_RATIO: float = 0.55
 
 var data: CharacterData
 
@@ -196,27 +199,51 @@ func _handle_attack(_delta: float) -> void:
 	_try_attack()
 
 
+## 出手。**无论有没有目标都会出招** —— 空地挥砍也播动画、也炸特效。
+##
+## 为什么必须这样：早先"没有敌人就 return"，导致空地上连点鼠标毫无反应，
+## 玩家根本没法体感三段连招（也看不到攻击动画）。
+## 出招节奏（= 连招节奏）仍由冷却控制，所以空挥与打中目标的节奏完全一致，
+## 可以放心用它来练手/试手感。
 func _try_attack() -> void:
-	if _attack_cooldown > 0.0 or _registry == null:
+	if _attack_cooldown > 0.0:
 		return
-	var candidates: Array[Node2D] = _registry.query_enemies_in_radius(global_position, data.attack_range)
-	if candidates.is_empty():
-		return
-	var target: Node2D = targeting.pick_target(global_position, data.attack_range, candidates)
-	if target == null:
-		return
-
-	# 判定照常按冷却走，动画只是表现 —— 动画再长也不会削 DPS
+	# 判定与动画都按冷却走，动画再长也不会削 DPS
 	_attack_cooldown = data.attack_interval
-	_facing = (target.global_position - global_position).normalized()
+
+	var target: Node2D = _pick_attack_target()
+	if target != null:
+		# 有目标就朝目标出手（否则沿用鼠标方向）
+		_facing = (target.global_position - global_position).normalized()
 	queue_redraw()
 	_play_combo_animation()
+
+	if target == null:
+		_play_whiff_slash()
+		return
 
 	var health_comp: HealthComponent = target.get_node_or_null("HealthComponent") as HealthComponent
 	if health_comp != null:
 		health_comp.apply_damage(Damage.new(data.attack_damage, self, data.damage_type))
 	# 命中特效炸在**受击点**（目标身上），朝攻击方向
 	HitEffectSpawner.spawn_at(target.global_position, _facing.x)
+
+
+## 按射程挑一个攻击目标；没敌人或没有 registry 时返回 null（= 空挥）
+func _pick_attack_target() -> Node2D:
+	if _registry == null:
+		return null
+	var candidates: Array[Node2D] = _registry.query_enemies_in_radius(global_position, data.attack_range)
+	if candidates.is_empty():
+		return null
+	return targeting.pick_target(global_position, data.attack_range, candidates)
+
+
+## 空挥特效：把挥击火花放在**身前**（而不是目标身上），
+## 这样没有敌人时也能看清每一次挥砍与三段连招的衔接。
+func _play_whiff_slash() -> void:
+	var dist: float = maxf(data.attack_range * WHIFF_DISTANCE_RATIO, PLACEHOLDER_SIZE)
+	HitEffectSpawner.spawn_at(global_position + _facing * dist, _facing.x)
 
 
 # ─────────────────────────────────────────────
