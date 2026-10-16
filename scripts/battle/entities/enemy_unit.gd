@@ -61,6 +61,13 @@ var _on_base_damage: Callable = Callable()
 var animator: SpriteAnimator
 var _current_anim: StringName = &"idle"
 
+## 一次性动画队列（attack → 可选 reload / hurt）。
+## 播放期间不允许移动动画覆盖它，否则敌人会"边走边打脸"——
+## 之前 attack 一播放就被下一帧的 _set_animation(run) 顶掉，等于白播。
+var _oneshot_queue: Array[StringName] = []
+var _oneshot_anim: StringName = &""
+var _oneshot_timer: float = 0.0
+
 ## 攻击反馈（程序绘制，与美术的攻击特效不冲突）
 var _attack_flash: float = 0.0
 var _flash_to: Vector2 = Vector2.ZERO
@@ -108,7 +115,7 @@ func _build_nodes() -> void:
 	# 有素材就用精灵，否则 _draw() 画占位方块/菱形
 	animator = SpriteAnimator.attach(self, data.sprite_set, data.sprite_scale)
 	if animator != null:
-		animator.on_animation_finished = _on_attack_animation_finished
+		animator.on_animation_finished = _on_anim_finished
 		animator.play_animation(&"idle")
 	queue_redraw()
 
@@ -118,12 +125,64 @@ func has_sprite() -> bool:
 
 
 ## 根据是否在移动切换 idle / run。只在动画名变化时才调用，避免每帧重置。
+## 一次性动画（攻击/换弹/受击）播放期间**不切换**，否则刚播的动画会被立刻顶掉。
 func _set_animation(animation_name: StringName) -> void:
+	if is_oneshot_active():
+		return
 	if _current_anim == animation_name:
 		return
 	_current_anim = animation_name
 	if animator != null:
+		animator.speed_scale = 1.0
 		animator.play_animation(animation_name)
+
+
+## 是否有一次性动画正在播放
+func is_oneshot_active() -> bool:
+	return _oneshot_timer > 0.0
+
+
+## 依次播放一串一次性动画（例如 attack → reload）。用素材原始速度，不拉伸，
+## 因为敌人的攻击间隔（1.0~1.5 秒）本身就比动画长，不需要压缩。
+func _play_oneshot_queue(anims: Array[StringName]) -> void:
+	_oneshot_queue = anims.duplicate()
+	_advance_oneshot_queue()
+
+
+func _advance_oneshot_queue() -> void:
+	if animator == null:
+		_oneshot_queue.clear()
+		return
+	# 跳过没有素材的动画（例如近战敌人没有 reload），继续找下一个能播的
+	while not _oneshot_queue.is_empty():
+		var next: StringName = _oneshot_queue.pop_front()
+		if animator.sprite_frames.has_animation(next):
+			animator.speed_scale = 1.0
+			_oneshot_anim = next
+			_oneshot_timer = maxf(animator.animation_total_duration(next), 0.05)
+			animator.play_animation(next, true)
+			return
+	_end_oneshot()
+
+
+func _end_oneshot() -> void:
+	_oneshot_anim = &""
+	_oneshot_timer = 0.0
+	_oneshot_queue.clear()
+	if animator != null:
+		animator.speed_scale = 1.0
+	# 回到移动动画（下一帧 _tick_movement_animation 也会刷新，这里先给个正确的姿态）
+	_current_anim = &"idle"
+	if animator != null and animator.sprite_frames.has_animation(&"idle"):
+		animator.play_animation(&"idle")
+
+
+## 一段一次性动画播完 → 播队列里的下一段，没有就结束
+func _on_anim_finished(finished: StringName) -> void:
+	if _oneshot_timer <= 0.0 or finished != _oneshot_anim:
+		return   # 旧动画的延迟信号，忽略
+	_oneshot_timer = 0.0
+	_advance_oneshot_queue()
 
 
 ## 主角检测区。近战靠它判断"主角是否在仇恨范围内"。
@@ -186,6 +245,12 @@ func _physics_process(delta: float) -> void:
 
 	if _attack_cooldown > 0.0:
 		_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
+	# 一次性动画（攻击/换弹/受击）计时。animation_finished 会提前清掉它，
+	# 这个计时器是兜底：万一信号没来（例如动画被切走），也不会永久卡住不出动画。
+	if _oneshot_timer > 0.0:
+		_oneshot_timer = maxf(0.0, _oneshot_timer - delta)
+		if _oneshot_timer <= 0.0:
+			_advance_oneshot_queue()
 	if _hit_flash > 0.0:
 		_hit_flash = maxf(0.0, _hit_flash - delta)
 		if animator != null:
@@ -372,27 +437,22 @@ func _fire_at(target: Node2D) -> void:
 
 
 ## 攻击反馈。分两层：
-##   1. 若素材提供了 attack 动画就播它（美术交付后自动生效，无需改代码）
+##   1. 若素材提供了 attack 动画就播它（远程再连播 reload —— 打完一枪接着换弹）
 ##   2. 程序绘制的反馈（近战=挥击弧，远程=弹道线），立即就有表现
 ## 两者可叠加，所以美术素材到位前后都有反馈。
 func _play_attack_feedback(target_position: Vector2) -> void:
 	_attack_flash = ATTACK_FLASH_TIME
 	_flash_to = target_position
-	if animator != null:
-		# 有 attack 动画就播一遍（不循环），并按攻击间隔对齐播放速度
-		if animator.sprite_frames.has_animation(&"attack"):
-			animator.fit_animation_to(&"attack", data.attack_interval)
-			animator.play_animation(&"attack", true)
+	# 攻击动画用**素材原始速度**：敌人攻击间隔 1.0~1.5 秒，比动画长，
+	# 不需要像主角那样压缩。远程接一段 reload 构成完整射击循环
+	# （attack 0.58s + reload 0.70s = 1.28s < 攻击间隔 1.5s，天然放得下）。
+	var queue: Array[StringName] = [&"attack"]
+	if data.attack_mode == EnemyData.AttackMode.RANGED:
+		queue.append(&"reload")
+	_play_oneshot_queue(queue)
+	# 命中特效炸在受击点
+	HitEffectSpawner.spawn_at(target_position, target_position.x - global_position.x)
 	queue_redraw()
-
-
-## 攻击动画播完回到移动/待机
-func _on_attack_animation_finished(animation_name: StringName) -> void:
-	if animation_name == &"attack":
-		_current_anim = &"idle"
-		if animator != null:
-			animator.speed_scale = 1.0
-			animator.play_animation(&"idle")
 
 
 func _find_live_hero() -> HeroUnit:
@@ -414,9 +474,13 @@ func _find_live_hero() -> HeroUnit:
 # ─────────────────────────────────────────────
 
 func _on_damaged(_damage: Damage) -> void:
+	# 受击表现两层叠加：shader 闪白 + hurt 动画（见 hero_unit.gd 同样说明）
 	_hit_flash = HIT_FLASH_TIME
 	if animator != null:
 		animator.set_flash(1.0)
+	# 受击动画优先于攻击动画：被打中会打断出手，这是常见做法
+	if animator != null and animator.sprite_frames.has_animation(&"hurt"):
+		_play_oneshot_queue([&"hurt"])
 	queue_redraw()
 
 

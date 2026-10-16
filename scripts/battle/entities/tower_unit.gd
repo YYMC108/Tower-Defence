@@ -164,6 +164,8 @@ func _try_attack() -> void:
 	var target_health: HealthComponent = target.get_node_or_null("HealthComponent") as HealthComponent
 	if target_health != null:
 		target_health.apply_damage(Damage.new(data.attack_damage, self, data.damage_type))
+	# 命中特效（与塔自身的程序化曳光线叠加；治疗塔不加，那是加血不是打击）
+	HitEffectSpawner.spawn_at(target.global_position, target.global_position.x - global_position.x)
 
 
 # ─────────────────────────────────────────────

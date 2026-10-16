@@ -201,7 +201,35 @@ func _run() -> void:
 			"复活瞬间满血（%.0f / %.0f）" % [health_at_revive, hero.data.max_health])
 
 	print("")
-	print("--- 8. 复活惩罚曲线递增与封顶 ---")
+	print("--- 8. 三段连招与受击动画叠加 ---")
+	if hero != null and hero.animator != null:
+		# 连点四次：应依次 attack_1 → attack_2 → attack_3 → 回到 attack_1
+		# （直接调播放函数，避开 headless 下无法模拟鼠标点击的限制；
+		#   输入层用 is_action_just_pressed，因此"每次点击 = 一次出手"）
+		var played: PackedStringArray = PackedStringArray()
+		for i: int in range(4):
+			hero.call("_play_combo_animation")
+			played.append(String(hero.animator.get_animation()))
+		print("  连点四次 → %s" % " / ".join(played))
+		_check(played.size() == 4
+				and played[0] == "attack_1" and played[1] == "attack_2"
+				and played[2] == "attack_3" and played[3] == "attack_1",
+			"连点依次播放 attack_1 → attack_2 → attack_3 → 回到 attack_1")
+
+		# 受击动画叠加：闪白 + hurt 动画同时生效
+		hero.call("_on_damaged", Damage.new(1.0, null, Damage.Type.TRUE))
+		var flash_val: float = float(
+			(hero.animator.material as ShaderMaterial).get_shader_parameter("flash"))
+		_check(hero.animator.get_animation() == &"hurt",
+			"受击时切到 hurt 动画（当前 %s）" % String(hero.animator.get_animation()))
+		_check(flash_val > 0.5, "受击闪白同时生效（flash = %.2f）" % flash_val)
+		_check(hero.call("is_oneshot_active") == true,
+			"一次性动画锁生效（受击期间不被移动动画覆盖）")
+	else:
+		_check(false, "主角或精灵动画不可用，无法验证连招")
+
+	print("")
+	print("--- 9. 复活惩罚曲线递增与封顶 ---")
 	var lvl: LevelData = _battle.level
 	var curve: PackedFloat32Array = PackedFloat32Array()
 	for i: int in range(1, 9):
@@ -213,7 +241,7 @@ func _run() -> void:
 	_check(is_equal_approx(curve[7], 30.0), "第 8 次 = 30 秒（已封顶）")
 
 	print("")
-	print("--- 9. 波次清空与胜负判定 ---")
+	print("--- 10. 波次清空与胜负判定 ---")
 	# 35 秒足够：诊断实测整局在 ~18 秒内结束（塔会把近战清光）。
 	var cleared: bool = false
 	var waited3: float = 0.0

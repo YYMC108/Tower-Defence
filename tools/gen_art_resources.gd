@@ -28,6 +28,7 @@ const SPRITES := "res://assets/sprites/"
 const CHARACTERS := "res://resources/characters/"
 const ENEMIES := "res://resources/enemies/"
 const LEVELS := "res://resources/levels/"
+const EFFECTS := "res://resources/effects/"
 
 ## 世界尺度：所有「空间量」（距离/速度/半径）都乘这个数
 const S: float = 4.0
@@ -247,6 +248,15 @@ func _init() -> void:
 	ranged.sprite_scale = 4.0
 	written += _save(ranged, ENEMIES + "ranged_archer.tres")
 
+	# ═══════════ 命中特效 ═══════════
+	# 由 scripts/battle/components/hit_effect_spawner.gd 在受击点实例化。
+	# 动画名统一叫 default（生成器只播第一个动画）。
+	var fx_set := UnitSpriteSet.new()
+	fx_set.sheets = [
+		_sheet(&"default", SPRITES + "effects/fx_slash_red.png", 3, 16.0, false),
+	]
+	written += _save(fx_set, EFFECTS + "_spriteset_fx_slash_red.tres")
+
 	# ═══════════ 关卡（含据点三态）═══════════
 	var base_set := UnitSpriteSet.new()
 	base_set.sheets = [
@@ -307,6 +317,13 @@ func _save(res: Resource, path: String) -> int:
 	if res == null:
 		push_error("要保存的资源为 null: %s" % path)
 		return 0
+	# ResourceSaver 不会自动建目录（会以错误码 19 失败），这里先确保目录存在
+	var dir: String = path.get_base_dir()
+	if not DirAccess.dir_exists_absolute(dir):
+		var mk: int = DirAccess.make_dir_recursive_absolute(dir)
+		if mk != OK:
+			push_error("建目录失败 (%d): %s" % [mk, dir])
+			return 0
 	res.take_over_path(path)
 	var err: int = ResourceSaver.save(res, path)
 	if err != OK:

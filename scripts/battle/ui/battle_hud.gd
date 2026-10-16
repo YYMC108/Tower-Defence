@@ -71,7 +71,7 @@ func _build() -> void:
 	add_child(bottom)
 
 	_hint_label = _make_label(bottom, Color(0.75, 0.75, 0.80), FONT_SIZE_SMALL)
-	_hint_label.text = "WASD/方向键 移动   ·   按住鼠标左键 攻击   ·   回车 开始下一波   ·   Backspace 认输"
+	_hint_label.text = "WASD/方向键 移动   ·   连点鼠标左键 三段连招   ·   回车 开始下一波   ·   Backspace 认输"
 
 
 func _make_label(parent: Node, color: Color, font_size: int) -> Label:

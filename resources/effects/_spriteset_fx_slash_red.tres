@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="UnitSpriteSet" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_sprite_set.gd" id="1_fhc3q"]
+[ext_resource type="Script" path="res://scripts/data/sprite_sheet_def.gd" id="2_1wjry"]
+
+[sub_resource type="Resource" id="Resource_ia3r5"]
+script = ExtResource("2_1wjry")
+animation_name = &"default"
+texture_path = "res://assets/sprites/effects/fx_slash_red.png"
+frame_count = 3
+fps = 16.0
+loop = false
+frame_durations = PackedFloat32Array()
+
+[resource]
+script = ExtResource("1_fhc3q")
+sheets = [SubResource("Resource_ia3r5")]

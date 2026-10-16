@@ -18,6 +18,7 @@ extends SceneTree
 const CHARACTER_SET_DIR: String = "res://resources/characters/"
 const ENEMY_SET_DIR: String = "res://resources/enemies/"
 const LEVEL_SET_DIR: String = "res://resources/levels/"
+const EFFECT_SET_DIR: String = "res://resources/effects/"
 
 ## 期望表：spriteset 文件 -> { 动画名: [帧数, 帧宽, 帧高] }
 ## 数据来源：ART_HANDOVER.md 第一节那张自动生成的交付表（已逐项实测校验一致）
@@ -66,6 +67,9 @@ const EXPECTED: Dictionary = {
 		"idle": [1, 256, 256],
 		"damaged": [1, 256, 256],
 		"critical": [1, 256, 256],
+	},
+	"effects/_spriteset_fx_slash_red.tres": {
+		"default": [3, 32, 32],
 	},
 }
 
@@ -126,7 +130,7 @@ func _init() -> void:
 	quit(_fail)
 
 
-## "characters/xxx" / "enemies/xxx" / "levels/xxx" -> 完整资源路径
+## "characters/xxx" / "enemies/xxx" / "levels/xxx" / "effects/xxx" -> 完整资源路径
 func _set_path(rel_path: String) -> String:
 	if rel_path.begins_with("characters/"):
 		return CHARACTER_SET_DIR + rel_path.trim_prefix("characters/")
@@ -134,6 +138,8 @@ func _set_path(rel_path: String) -> String:
 		return ENEMY_SET_DIR + rel_path.trim_prefix("enemies/")
 	if rel_path.begins_with("levels/"):
 		return LEVEL_SET_DIR + rel_path.trim_prefix("levels/")
+	if rel_path.begins_with("effects/"):
+		return EFFECT_SET_DIR + rel_path.trim_prefix("effects/")
 	return "res://resources/" + rel_path
 
 

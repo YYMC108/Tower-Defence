@@ -116,6 +116,10 @@ func _build_entities_container() -> void:
 	_entities.name = ENTITIES_CONTAINER
 	add_child(_entities)
 
+	# 命中特效生成器。单位侧用 HitEffectSpawner.spawn_at() 静态调用，
+	# 不需要沿攻击链条层层传引用。素材缺失时它自己静默降级。
+	_entities.add_child(HitEffectSpawner.new())
+
 
 func _spawn_hero() -> void:
 	var hero_data: CharacterData = CharacterRegistry.find_hero()

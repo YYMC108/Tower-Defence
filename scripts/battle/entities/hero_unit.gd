@@ -33,6 +33,13 @@ const HIT_FLASH_TIME: float = 0.12
 ## 手感等同于没有攻击动画的版本。
 const USE_ATTACK_ANIMATION: bool = true
 
+## 三段连招：连点三次鼠标，依次播放 attack_1 → attack_2 → attack_3。
+## 超过 COMBO_RESET_SECONDS 没有再次出手，连招回到第一段。
+const COMBO_LENGTH: int = 3
+const COMBO_RESET_SECONDS: float = 1.2
+## 连招动画名前缀（attack_1 / attack_2 / attack_3）
+const COMBO_ANIM_PREFIX: String = "attack_"
+
 var data: CharacterData
 
 var health: HealthComponent
@@ -46,9 +53,21 @@ var _registry: UnitRegistry = null
 
 ## 绘制用：受击闪白计时
 var _hit_flash: float = 0.0
-## 当前动画与切换计时
+## 当前（移动/待机）动画名
 var _current_anim: StringName = &"idle"
-var _attack_anim_timer: float = 0.0
+
+## 一次性动画（攻击段 / 受击）——播放期间不允许移动动画覆盖它。
+##
+## 用一套机制同时管攻击与受击，是因为两者是同一类问题：
+## "播一段不循环的动画，播完回到 run/idle，期间别被打断"。
+## 早先只有攻击用专门的 _attack_anim_timer，加入受击动画后必须统一，
+## 否则两个计时器会互相覆盖。
+var _oneshot_anim: StringName = &""
+var _oneshot_timer: float = 0.0
+
+## 连招进度：0..COMBO_LENGTH-1，下一段播放 attack_{_combo_step + 1}
+var _combo_step: int = 0
+var _combo_timer: float = 0.0
 
 
 static func create(p_data: CharacterData) -> HeroUnit:
@@ -120,10 +139,16 @@ func _physics_process(delta: float) -> void:
 func _tick_timers(delta: float) -> void:
 	if _attack_cooldown > 0.0:
 		_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
-	if _attack_anim_timer > 0.0:
-		_attack_anim_timer = maxf(0.0, _attack_anim_timer - delta)
-		if _attack_anim_timer <= 0.0:
-			_refresh_locomotion_animation()
+	# 一次性动画（攻击段 / 受击）计时。超时或被 animation_finished 提前清掉都算结束。
+	if _oneshot_timer > 0.0:
+		_oneshot_timer = maxf(0.0, _oneshot_timer - delta)
+		if _oneshot_timer <= 0.0:
+			_end_oneshot()
+	# 连招衔接窗口：太久没出手就回到第一段
+	if _combo_timer > 0.0:
+		_combo_timer = maxf(0.0, _combo_timer - delta)
+		if _combo_timer <= 0.0:
+			_combo_step = 0
 	if _hit_flash > 0.0:
 		_hit_flash = maxf(0.0, _hit_flash - delta)
 		# 精灵的受击闪白（占位方块走 _draw，精灵走 shader 材质）
@@ -141,22 +166,26 @@ func _handle_movement(_delta: float) -> void:
 		input_dir = input_dir.normalized()
 	velocity = input_dir * data.move_speed
 	move_and_slide()
-	# 只在非攻击状态下切换跑/待机与朝向（USE_ATTACK_ANIMATION 关闭时
-	# _attack_anim_timer 恒为 0，所以这里等价于"每帧都刷新"，手感与接入美术前一致）。
-	# 朝向用**移动方向**（WASD），而不是鼠标方向 —— 跑动时应该面朝跑的方向。
-	if not _is_attack_animation_active():
+	# 只在非一次性动画状态下切换跑/待机与朝向。
+	# 朝向用**移动方向**（WASD），而不是鼠标方向 —— 跑动时应该面朝跑的方向；
+	# 攻击/受击时的朝向由那段动画自己负责，不受移动方向干扰。
+	if not is_oneshot_active():
 		var moving: bool = input_dir.length_squared() > 0.01
 		_set_animation(&"run" if moving else &"idle")
 		if moving and animator != null:
 			animator.set_facing(input_dir.x)
 
 
-func _is_attack_animation_active() -> bool:
-	return USE_ATTACK_ANIMATION and _attack_anim_timer > 0.0
+## 是否有一次性动画（攻击段 / 受击）正在播放
+func is_oneshot_active() -> bool:
+	return USE_ATTACK_ANIMATION and _oneshot_timer > 0.0
 
 
 func _handle_attack(_delta: float) -> void:
-	if not Input.is_action_pressed(&"attack"):
+	# **连点触发**：每点一次鼠标 = 一次出手，依次播放 attack_1/2/3。
+	# 这里用 just_pressed 而不是 pressed —— 三段连招的语义是"连点三次"，
+	# 按住不放只算一次（若要恢复"按住连续攻击"，改回 pressed 并去掉连招推进即可）。
+	if not Input.is_action_just_pressed(&"attack"):
 		return
 	# 朝向鼠标
 	var mouse_pos: Vector2 = get_global_mouse_position()
@@ -181,11 +210,13 @@ func _try_attack() -> void:
 	_attack_cooldown = data.attack_interval
 	_facing = (target.global_position - global_position).normalized()
 	queue_redraw()
-	_play_attack_animation()
+	_play_combo_animation()
 
 	var health_comp: HealthComponent = target.get_node_or_null("HealthComponent") as HealthComponent
 	if health_comp != null:
 		health_comp.apply_damage(Damage.new(data.attack_damage, self, data.damage_type))
+	# 命中特效炸在**受击点**（目标身上），朝攻击方向
+	HitEffectSpawner.spawn_at(target.global_position, _facing.x)
 
 
 # ─────────────────────────────────────────────
@@ -195,30 +226,59 @@ func _try_attack() -> void:
 func _set_animation(animation_name: StringName) -> void:
 	_current_anim = animation_name
 	if animator != null:
-		# 移动/待机用原始速度（攻击动画会临时改 speed_scale，这里复位）
+		# 移动/待机用原始速度（一次性动画会临时改 speed_scale，这里复位）
 		animator.speed_scale = 1.0
 		animator.play_animation(animation_name)
 
 
-func _play_attack_animation() -> void:
+## 播放第 _combo_step 段攻击动画，并推进连招。
+##
+## 三段是三个**独立动画**（attack_1/2/3），段与段之间不回中立姿势 ——
+## 连续点击时看起来就是一气呵成的三连。
+func _play_combo_animation() -> void:
+	var anim_name := StringName(COMBO_ANIM_PREFIX + str(_combo_step + 1))
+	# 推进连招（超过窗口会在 _tick_timers 里归零）
+	_combo_step = (_combo_step + 1) % COMBO_LENGTH
+	_combo_timer = COMBO_RESET_SECONDS
 	if not USE_ATTACK_ANIMATION:
 		return
-	if animator == null or not animator.sprite_frames.has_animation(&"attack"):
+	_play_oneshot(anim_name, data.attack_interval)
+
+
+## 播放一段一次性动画。
+##
+## target_seconds > 0：按比例调整播放速度，让这段动画**正好铺满** target_seconds
+##   （攻击段用这个 —— 动画比攻击间隔长的话会被反复重头播放，看起来像卡住）
+## target_seconds <= 0：用素材自己的原始速度（受击用这个 —— 它是被动反馈，
+##   不应该被拉长到某个固定时长）
+func _play_oneshot(anim_name: StringName, target_seconds: float) -> void:
+	if animator == null or not animator.sprite_frames.has_animation(anim_name):
 		return
-	# 关键：让一次攻击动画正好铺满一个攻击间隔。
-	# 若动画比间隔长，就会被反复重头播放而永远播不完 → 看起来像卡住；
-	# 这里按比例加快播放，使其与出手节奏精确对齐。
-	var playback: float = animator.fit_animation_to(&"attack", data.attack_interval)
-	_attack_anim_timer = maxf(playback, 0.05)
-	# 攻击时朝向**瞄准方向**（鼠标），与跑动的朝向来源不同
+	var playback: float = 0.0
+	if target_seconds > 0.0:
+		playback = animator.fit_animation_to(anim_name, target_seconds)
+	else:
+		animator.speed_scale = 1.0
+		playback = animator.animation_total_duration(anim_name)
+	_oneshot_anim = anim_name
+	_oneshot_timer = maxf(playback, 0.05)
+	# 一次性动画的朝向按当前 _facing（攻击=瞄准方向）
 	animator.set_facing(_facing.x)
-	animator.play_animation(&"attack", true)
+	animator.play_animation(anim_name, true)
+
+
+func _end_oneshot() -> void:
+	_oneshot_anim = &""
+	_oneshot_timer = 0.0
+	if animator != null:
+		animator.speed_scale = 1.0
+	_refresh_locomotion_animation()
 
 
 func _on_anim_finished(finished: StringName) -> void:
-	if finished == &"attack":
-		_attack_anim_timer = 0.0
-		_refresh_locomotion_animation()
+	# 只理会当前这段一次性动画的结束信号（旧动画的延迟信号不应打断新动画）
+	if _oneshot_timer > 0.0 and finished == _oneshot_anim:
+		_end_oneshot()
 
 
 func _refresh_locomotion_animation() -> void:
@@ -236,9 +296,15 @@ func _refresh_locomotion_animation() -> void:
 # ─────────────────────────────────────────────
 
 func _on_damaged(_damage: Damage) -> void:
+	# 受击表现是**两层叠加**（按策划决定）：
+	#   1. shader 闪白 —— 即时、任何姿态都生效、不需要素材
+	#   2. hurt 动画 —— 姿态变化，更有"被打到"的感觉
+	# 所以即使某个单位没有 hurt 素材，闪白仍然给出完整反馈。
 	_hit_flash = HIT_FLASH_TIME
 	if animator != null:
 		animator.set_flash(1.0)
+	# 原始速度播放，不拉伸（受击是被动反馈，不该被固定成某个时长）
+	_play_oneshot(&"hurt", 0.0)
 	queue_redraw()
 
 
@@ -260,7 +326,11 @@ func revive() -> void:
 	visible = true
 	collision_layer = PhysicsLayers.bit(&"player")
 	health.revive_full()
-	_attack_anim_timer = 0.0
+	# 复活时清掉所有一次性动画与连招进度，从干净状态开始
+	_oneshot_anim = &""
+	_oneshot_timer = 0.0
+	_combo_step = 0
+	_combo_timer = 0.0
 	_set_animation(&"idle")
 	set_physics_process(true)
 	queue_redraw()
