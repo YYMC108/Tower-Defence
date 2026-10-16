@@ -1,4 +1,4 @@
-﻿extends Node
+extends Node
 ## 战斗循环冒烟测试（集成测试）。
 ##
 ## 运行方式（**必须以场景方式运行**，因为 --script 模式不会注册 autoload）：
