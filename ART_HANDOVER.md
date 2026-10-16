@@ -41,7 +41,7 @@
 > ⚙️ **本表由 `tools/_dump_delivery_table.gd` 从工程实际资源读出后自动生成，不要手改。**
 > 手写版曾经严重落后（主角还写着已被替换掉的 8 帧两段攻击）。资源变了就重跑一次、重新粘进来。
 
-﻿| 文件 | 用途 | 画布/帧 | 帧数 | 帧率 | 循环 | sprite_scale |
+| 文件 | 用途 | 画布/帧 | 帧数 | 帧率 | 循环 | sprite_scale |
 |---|---|---|---|---|---|---|
 | `enemies/melee_brute_idle.png` | idle | 32×32 | 1 | 5.0 fps | ✅ | 1.0 |
 | `enemies/melee_brute_run.png` | run | 64×32 | 7 | 8.0 fps | ✅ | 1.0 |
@@ -62,8 +62,15 @@
 | `enemies/ranged_archer_attack.png` | attack | 32×32 | 7 | 12.0 fps | ❌ | 1.0 |
 | `enemies/ranged_archer_reload.png` | reload | 32×32 | 7 | 10.0 fps | ❌ | 1.0 |
 | `enemies/ranged_archer_hurt.png` | hurt | 32×32 | 2 | 12.0 fps | ❌ | 1.0 |
-| `towers/tower_archer_idle.png` | idle | 64×64 | 1 | 5.0 fps | ✅ | 0.5 |
-| `towers/tower_healer_idle.png` | idle | 64×64 | 1 | 5.0 fps | ✅ | 0.5 |
+| `hero/st_idle.png` | idle | 128×128 | 4 | 8.0 fps | ✅ | 0.25 |
+| `hero/st_run.png` | run | 128×128 | 14 | 10.0 fps | ✅ | 0.25 |
+| `hero/st_attack_1.png` | attack_1 | 128×128 | 12 | 12.0 fps | ❌ | 0.25 |
+| `hero/st_attack_2.png` | attack_2 | 128×128 | 6 | 12.0 fps | ❌ | 0.25 |
+| `hero/st_attack_3.png` | attack_3 | 128×128 | 12 | 12.0 fps | ❌ | 0.25 |
+| `hero/st_hurt.png` | hurt | 128×128 | 2 | 12.0 fps | ❌ | 0.25 |
+| `hero/st_recover.png` | recover | 128×128 | 4 | 12.0 fps | ❌ | 0.25 |
+| `towers/tower_archer_idle.png` | idle | 64×64 | 4 | 6.0 fps | ✅ | 0.5 |
+| `towers/tower_healer_idle.png` | idle | 64×64 | 4 | 6.0 fps | ✅ | 0.5 |
 | `effects/fx_slash_red.png` | 特效 | 32×32 | 3 | 16.0 fps | ❌ | 1.0 |
 | `base/base_critical.png` | 据点 critical | 256×256 | 1 | 5.0 fps | ✅ | 0.25 |
 | `base/base_damaged.png` | 据点 damaged | 256×256 | 1 | 5.0 fps | ✅ | 0.25 |
