@@ -11,8 +11,8 @@ extends Node2D
 signal died()
 
 const PLACEHOLDER_COLOR: Color = Color(0.35, 0.62, 0.95)
-## 塔的精灵画布 64px、显示 32px。占位方块按显示尺寸画。
-const PLACEHOLDER_SIZE: float = 26.0
+## 塔的精灵显示 128px。占位方块按显示尺寸画（随世界尺度 ×4，原 26）。
+const PLACEHOLDER_SIZE: float = 104.0
 
 ## 攻击特效：不做新素材，纯程序绘制。
 ## 塔目前只有 1 帧 idle（美术尚未交付攻击动画），如果什么都不做，

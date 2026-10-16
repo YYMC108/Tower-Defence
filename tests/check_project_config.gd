@@ -40,9 +40,11 @@ func _init() -> void:
 
 	print("=== 2. 视口 ===")
 	# 改这两个数字等于改整个世界的尺度：所有 .tres 里的距离/速度、
-	# 地图 Marker 坐标、HUD 布局常量都要跟着改。改完必须重跑战斗冒烟测试。
-	_check_int("display/window/size/viewport_width", 480, "")
-	_check_int("display/window/size/viewport_height", 320, "")
+	# 地图 Marker 坐标、瓦片尺寸、HUD 布局常量都要跟着改。
+	# 改完必须重跑战斗冒烟测试与精灵切片测试。
+	# 1536x960 的选择理由见 project.godot 的 [display] 注释。
+	_check_int("display/window/size/viewport_width", 1536, "")
+	_check_int("display/window/size/viewport_height", 960, "")
 
 	print("=== 3. 输入映射（手写配置最易出错处）===")
 	var expected := {

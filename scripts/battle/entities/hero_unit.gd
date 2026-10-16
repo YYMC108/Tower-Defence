@@ -14,8 +14,8 @@ signal died()
 signal health_depleted()
 
 const PLACEHOLDER_COLOR: Color = Color(0.30, 0.85, 0.40)
-## 占位方块与碰撞体尺寸。基于精灵实际渲染尺寸定（美术画布 32px，角色主体约 20px 宽）
-const PLACEHOLDER_SIZE: float = 20.0
+## 占位方块与碰撞体尺寸。随世界尺度 ×4（原 20）：精灵显示 128px，主体约占 80px 宽。
+const PLACEHOLDER_SIZE: float = 80.0
 ## 受击闪白持续时长（秒）
 const HIT_FLASH_TIME: float = 0.12
 

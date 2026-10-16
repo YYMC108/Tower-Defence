@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="UnitSpriteSet" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_sprite_set.gd" id="1_b4cmy"]
+[ext_resource type="Script" path="res://scripts/data/sprite_sheet_def.gd" id="2_0apbw"]
+
+[sub_resource type="Resource" id="Resource_p7gdx"]
+script = ExtResource("2_0apbw")
+texture_path = "res://assets/sprites/enemies/melee_brute_idle.png"
+frame_count = 1
+fps = 5.0
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_8vwgj"]
+script = ExtResource("2_0apbw")
+animation_name = &"run"
+texture_path = "res://assets/sprites/enemies/melee_brute_run.png"
+frame_count = 7
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_e6u7p"]
+script = ExtResource("2_0apbw")
+animation_name = &"attack"
+texture_path = "res://assets/sprites/enemies/melee_brute_attack.png"
+frame_count = 13
+fps = 10.0
+loop = false
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_umfhb"]
+script = ExtResource("2_0apbw")
+animation_name = &"hurt"
+texture_path = "res://assets/sprites/enemies/melee_brute_hurt.png"
+frame_count = 2
+fps = 12.0
+loop = false
+frame_durations = PackedFloat32Array()
+
+[resource]
+script = ExtResource("1_b4cmy")
+sheets = [SubResource("Resource_p7gdx"), SubResource("Resource_8vwgj"), SubResource("Resource_e6u7p"), SubResource("Resource_umfhb")]

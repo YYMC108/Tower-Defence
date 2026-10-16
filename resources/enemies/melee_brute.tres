@@ -1,20 +1,24 @@
 [gd_resource type="Resource" script_class="EnemyData" format=3]
 
-[ext_resource type="Script" path="res://scripts/data/enemy_data.gd" id="1_6ys1a"]
+[ext_resource type="Script" path="res://scripts/data/enemy_data.gd" id="1_gao4y"]
+[ext_resource type="Resource" path="res://resources/enemies/_spriteset_melee_brute.tres" id="2_7a5en"]
 
 [resource]
-script = ExtResource("1_6ys1a")
+script = ExtResource("1_gao4y")
 id = &"melee_brute"
 display_name = "近战重装"
 placeholder_color = Color(0.6, 0.16, 0.16, 1)
+sprite_set = ExtResource("2_7a5en")
+sprite_scale = 4.0
 can_damage_tower = false
 can_damage_base = true
 attack_mode = 0
 attack_damage = 14.0
 attack_interval = 1.4
-attack_range = 28.0
-building_attack_range = 28.0
+attack_range = 112.0
+building_attack_range = 112.0
 max_health = 90.0
-move_speed = 26.0
-hero_detect_radius = 80.0
+move_speed = 104.0
+waypoint_reach_radius = 16.0
+hero_detect_radius = 320.0
 reward_battle_currency = 2

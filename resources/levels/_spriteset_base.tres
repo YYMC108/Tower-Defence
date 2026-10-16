@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="UnitSpriteSet" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_sprite_set.gd" id="1_msgma"]
+[ext_resource type="Script" path="res://scripts/data/sprite_sheet_def.gd" id="2_kxivs"]
+
+[sub_resource type="Resource" id="Resource_k0fp1"]
+script = ExtResource("2_kxivs")
+texture_path = "res://assets/sprites/base/base_idle.png"
+frame_count = 1
+fps = 5.0
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_srhpk"]
+script = ExtResource("2_kxivs")
+animation_name = &"damaged"
+texture_path = "res://assets/sprites/base/base_damaged.png"
+frame_count = 1
+fps = 5.0
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_sst5b"]
+script = ExtResource("2_kxivs")
+animation_name = &"critical"
+texture_path = "res://assets/sprites/base/base_critical.png"
+frame_count = 1
+fps = 5.0
+frame_durations = PackedFloat32Array()
+
+[resource]
+script = ExtResource("1_msgma")
+sheets = [SubResource("Resource_k0fp1"), SubResource("Resource_srhpk"), SubResource("Resource_sst5b")]

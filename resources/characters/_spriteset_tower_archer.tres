@@ -6,8 +6,8 @@
 [sub_resource type="Resource" id="Resource_3aj3v"]
 script = ExtResource("2_ibfvj")
 texture_path = "res://assets/sprites/towers/tower_archer_idle.png"
-frame_count = 1
-fps = 5.0
+frame_count = 4
+fps = 6.0
 frame_durations = PackedFloat32Array()
 
 [resource]

@@ -25,8 +25,12 @@ const GROUP_WAYPOINT: StringName = &"map_waypoint"
 const GROUP_TOWER_SLOT: StringName = &"map_tower_slot"
 
 ## 路径线颜色（调试可视化）
-const PATH_DEBUG_COLOR: Color = Color(0.9, 0.8, 0.4, 0.35)
-const SLOT_DEBUG_COLOR: Color = Color(0.5, 0.9, 1.0, 0.55)
+##
+## 地形已经有明显的砖路走廊，所以这里刻意画得**很淡**，只作为"敌人往哪走"的
+## 辅助线，而不是抢眼的横条。线宽也远小于世界尺度（不用 ×4 的 12px），
+## 否则会在 1536x960 下变成一条粗橙条，看起来像特效。
+const PATH_DEBUG_COLOR: Color = Color(0.9, 0.8, 0.4, 0.16)
+const SLOT_DEBUG_COLOR: Color = Color(0.5, 0.9, 1.0, 0.45)
 const BASE_DEBUG_COLOR: Color = Color(0.95, 0.85, 0.35, 0.9)
 
 
@@ -103,20 +107,33 @@ func slot_count() -> int:
 # 这些都不能放在地图脚本里。地图只提供 map_base 标记作为坐标。
 # ─────────────────────────────────────────────
 
+## 调试绘制尺寸。瓦片 64px，所以取 4~6px 就够看清，不需要跟着世界 ×4
+## （×4 会变成 12~16px 的粗条，反而盖住地形与单位）。
+const DEBUG_LINE_WIDTH: float = 4.0
+const DEBUG_WAYPOINT_RADIUS: float = 5.0
+const DEBUG_SLOT_RADIUS: float = 40.0
+const DEBUG_SLOT_MARK: float = 16.0
+const DEBUG_SLOT_LINE_WIDTH: float = 2.0
+
+
 func _draw() -> void:
 	var points: PackedVector2Array = waypoint_positions()
 	if points.size() >= 2:
 		for i: int in range(points.size() - 1):
-			draw_line(to_local(points[i]), to_local(points[i + 1]), PATH_DEBUG_COLOR, 3.0, true)
+			draw_line(to_local(points[i]), to_local(points[i + 1]),
+				PATH_DEBUG_COLOR, DEBUG_LINE_WIDTH, true)
 		for i: int in range(points.size()):
-			draw_circle(to_local(points[i]), 2.5, PATH_DEBUG_COLOR)
+			draw_circle(to_local(points[i]), DEBUG_WAYPOINT_RADIUS, PATH_DEBUG_COLOR)
 
 	# 最后一段：从最后一个路径点到大本营
 	if points.size() >= 1:
-		draw_line(to_local(points[points.size() - 1]), to_local(base_position()), PATH_DEBUG_COLOR, 3.0, true)
+		draw_line(to_local(points[points.size() - 1]), to_local(base_position()),
+			PATH_DEBUG_COLOR, DEBUG_LINE_WIDTH, true)
 
 	for slot: Vector2 in tower_slot_positions():
 		var p: Vector2 = to_local(slot)
-		draw_arc(p, 9.0, 0.0, TAU, 20, SLOT_DEBUG_COLOR, 1.0)
-		draw_line(p + Vector2(-4, 0), p + Vector2(4, 0), SLOT_DEBUG_COLOR, 1.0)
-		draw_line(p + Vector2(0, -4), p + Vector2(0, 4), SLOT_DEBUG_COLOR, 1.0)
+		draw_arc(p, DEBUG_SLOT_RADIUS, 0.0, TAU, 24, SLOT_DEBUG_COLOR, DEBUG_SLOT_LINE_WIDTH)
+		draw_line(p + Vector2(-DEBUG_SLOT_MARK, 0), p + Vector2(DEBUG_SLOT_MARK, 0),
+			SLOT_DEBUG_COLOR, DEBUG_SLOT_LINE_WIDTH)
+		draw_line(p + Vector2(0, -DEBUG_SLOT_MARK), p + Vector2(0, DEBUG_SLOT_MARK),
+			SLOT_DEBUG_COLOR, DEBUG_SLOT_LINE_WIDTH)

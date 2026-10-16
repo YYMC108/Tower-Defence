@@ -18,6 +18,33 @@ frame_count = 16
 fps = 20.0
 frame_durations = PackedFloat32Array()
 
+[sub_resource type="Resource" id="Resource_ekql5"]
+script = ExtResource("2_nylk6")
+animation_name = &"attack"
+texture_path = "res://assets/sprites/enemies/ranged_archer_attack.png"
+frame_count = 7
+fps = 12.0
+loop = false
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_4k5ay"]
+script = ExtResource("2_nylk6")
+animation_name = &"reload"
+texture_path = "res://assets/sprites/enemies/ranged_archer_reload.png"
+frame_count = 7
+fps = 10.0
+loop = false
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_vdvu6"]
+script = ExtResource("2_nylk6")
+animation_name = &"hurt"
+texture_path = "res://assets/sprites/enemies/ranged_archer_hurt.png"
+frame_count = 2
+fps = 12.0
+loop = false
+frame_durations = PackedFloat32Array()
+
 [resource]
 script = ExtResource("1_1qbum")
-sheets = [SubResource("Resource_3ctli"), SubResource("Resource_kw6n8")]
+sheets = [SubResource("Resource_3ctli"), SubResource("Resource_kw6n8"), SubResource("Resource_ekql5"), SubResource("Resource_4k5ay"), SubResource("Resource_vdvu6")]

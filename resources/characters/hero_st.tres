@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/character_data.gd" id="1_sn4vt"]
+[ext_resource type="Resource" path="res://resources/characters/_spriteset_hero_st.tres" id="2_rxris"]
+
+[resource]
+script = ExtResource("1_sn4vt")
+id = &"hero_st"
+display_name = "重装持盾"
+description = "第二个主角。偏坦：移动慢、伤害低，但很能扛。具体数值待策划定。"
+role = 0
+max_health = 260.0
+move_speed = 280.0
+attack_damage = 9.0
+attack_interval = 0.55
+attack_range = 176.0
+sprite_set = ExtResource("2_rxris")

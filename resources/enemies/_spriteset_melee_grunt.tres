@@ -18,6 +18,24 @@ frame_count = 5
 fps = 10.0
 frame_durations = PackedFloat32Array()
 
+[sub_resource type="Resource" id="Resource_v4ksv"]
+script = ExtResource("2_ffffq")
+animation_name = &"attack"
+texture_path = "res://assets/sprites/enemies/melee_grunt_attack.png"
+frame_count = 5
+fps = 12.0
+loop = false
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_flnwx"]
+script = ExtResource("2_ffffq")
+animation_name = &"hurt"
+texture_path = "res://assets/sprites/enemies/melee_grunt_hurt.png"
+frame_count = 2
+fps = 12.0
+loop = false
+frame_durations = PackedFloat32Array()
+
 [resource]
 script = ExtResource("1_3r2c1")
-sheets = [SubResource("Resource_w86qu"), SubResource("Resource_vry00")]
+sheets = [SubResource("Resource_w86qu"), SubResource("Resource_vry00"), SubResource("Resource_v4ksv"), SubResource("Resource_flnwx")]

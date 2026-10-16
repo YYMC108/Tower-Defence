@@ -5,8 +5,12 @@ extends CanvasLayer
 ## 铁律（DESIGN.md 第 12 节）：**UI 只监听管理器信号，绝不反查实体字段。**
 ## 这里所有数据都来自 BattleState / RoundManager，不去读某个敌人的 hp。
 
-const FONT_SIZE_BIG: int = 13
-const FONT_SIZE_SMALL: int = 10
+## HUD 字号与间距随视口放大。视口 480x320 → 1536x960（×3.2 宽 / ×3 高），
+## 统一取 ×3，保证控件不会显得过小。
+const FONT_SIZE_BIG: int = 39
+const FONT_SIZE_SMALL: int = 30
+## 边距与间距的缩放倍数（与字号一致）
+const UI_SCALE: int = 3
 
 var _base_label: Label
 var _wave_label: Label
@@ -29,14 +33,14 @@ func _build() -> void:
 	var root := MarginContainer.new()
 	root.name = "HUDRoot"
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.add_theme_constant_override("margin_left", 8)
-	root.add_theme_constant_override("margin_top", 6)
-	root.add_theme_constant_override("margin_right", 8)
+	root.add_theme_constant_override("margin_left", 8 * UI_SCALE)
+	root.add_theme_constant_override("margin_top", 6 * UI_SCALE)
+	root.add_theme_constant_override("margin_right", 8 * UI_SCALE)
 	add_child(root)
 
 	var column := VBoxContainer.new()
 	column.name = "TopLeft"
-	column.add_theme_constant_override("separation", 2)
+	column.add_theme_constant_override("separation", 2 * UI_SCALE)
 	column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	root.add_child(column)
 
@@ -53,8 +57,8 @@ func _build() -> void:
 	_center_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_center_label.anchor_left = 0.0
 	_center_label.anchor_right = 1.0
-	_center_label.offset_top = 70
-	_center_label.add_theme_font_size_override("font_size", 16)
+	_center_label.offset_top = 70 * UI_SCALE
+	_center_label.add_theme_font_size_override("font_size", 16 * UI_SCALE)
 	_center_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
 	add_child(_center_label)
 
@@ -62,8 +66,8 @@ func _build() -> void:
 	var bottom := MarginContainer.new()
 	bottom.name = "BottomHint"
 	bottom.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	bottom.add_theme_constant_override("margin_left", 8)
-	bottom.add_theme_constant_override("margin_bottom", 4)
+	bottom.add_theme_constant_override("margin_left", 8 * UI_SCALE)
+	bottom.add_theme_constant_override("margin_bottom", 4 * UI_SCALE)
 	add_child(bottom)
 
 	_hint_label = _make_label(bottom, Color(0.75, 0.75, 0.80), FONT_SIZE_SMALL)

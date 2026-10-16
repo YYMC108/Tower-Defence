@@ -1,21 +1,24 @@
 @tool
 extends SceneTree
-## 一次性把 TileMapLayer 加进实验关卡地图并铺好地形。
+## 重建实验关卡的 TileSet 与地形。
 ##
 ## 用法：godot --headless --path . --script res://tools/paint_test_level.gd
 ##
-## 铺法：
-##   - 全图草地（三种草地随机变化，避免单调）
-##   - 沿敌人路径铺一条石砖路走廊
-##   - 大本营周围铺水泥
+## 做两件事：
+##   1. 确保 TileSet 的 tile_size = 64（源生素材也是 64，即 1:1，不缩放最锐利）
+##   2. 按 24x15 格重铺地形（= 1536x960，正好等于视口，一屏放下整张地图）
 ##
-## 注意：TileMapLayer 设 z_index = -1，否则会盖住 test_level_map.gd
-## 画的调试线（父节点 _draw 在子节点之下）。
+## 世界尺度（见 DESIGN.md 15.11 与 project.godot）：
+##   单位显示 128px、瓦片 64px —— 一个单位正好占 2x2 格，与改造前比例一致。
+##
+## 注意：TileMapLayer 设 z_index = -10，否则会盖住 test_level_map.gd 画的调试线
+## （父节点的 _draw 在子节点之下）。
 
 const MAP_SCENE: String = "res://scenes/battle/map/test_level.tscn"
 const TILESET: String = "res://resources/tilesets/test_level_tileset.tres"
+const TILE_SRC_DIR: String = "res://assets/tilesets/"
 
-## source_id -> 图块含义（与 gen 顺序一致）
+## 图块源顺序（必须与 _build_tileset() 里添加的顺序一致）
 const SRC_GRASS_A: int = 0
 const SRC_GRASS_B: int = 1
 const SRC_GRASS_C: int = 2
@@ -24,14 +27,31 @@ const SRC_CONCRETE: int = 4
 const SRC_CONCRETE_CRACKED: int = 5
 const SRC_GRATE: int = 6
 
-const TILE: int = 16
-const MAP_W: int = 30
-const MAP_H: int = 20
+const TILE: int = 64
+const MAP_W: int = 24
+const MAP_H: int = 15
+## 敌人走廊所在行（tile 行号）
+const PATH_ROW: int = 7
 
 
 func _init() -> void:
-	print("=== 铺实验关卡地形 ===")
+	print("=== 重建实验关卡（%dx%d 格 @ %dpx = %dx%d）===" % [
+		MAP_W, MAP_H, TILE, MAP_W * TILE, MAP_H * TILE,
+	])
 
+	# ── 1. TileSet ──
+	var ts: TileSet = _build_tileset()
+	if ts == null:
+		quit(1)
+		return
+	var err: int = ResourceSaver.save(ts, TILESET)
+	if err != OK:
+		push_error("TileSet 保存失败: %d" % err)
+		quit(1)
+		return
+	print("  TileSet 已保存（tile_size = %s）" % str(ts.tile_size))
+
+	# ── 2. 地图 ──
 	var packed: PackedScene = load(MAP_SCENE) as PackedScene
 	if packed == null:
 		push_error("地图场景加载失败: %s" % MAP_SCENE)
@@ -39,92 +59,96 @@ func _init() -> void:
 		return
 	var root: Node = packed.instantiate()
 
-	# 复用已有的 TileMapLayer，没有就新建
 	var layer: TileMapLayer = root.get_node_or_null("Ground") as TileMapLayer
 	if layer == null:
 		layer = TileMapLayer.new()
 		layer.name = "Ground"
-		# 放在最底层，避免盖住调试线与单位
 		layer.z_index = -10
 		root.add_child(layer)
-		# ⚠️ 关键：pack() 只序列化 owner 指向根节点的子节点。
-		#    新建节点不会自动设置 owner，漏了这一步它会被静默丢弃。
+		# ⚠️ pack() 只序列化 owner 指向根节点的子节点，漏了这句会被静默丢弃
 		layer.owner = root
-		# 移到第一个子节点位置，保证层级清晰
 		root.move_child(layer, 0)
-
-	var ts: TileSet = load(TILESET) as TileSet
-	if ts == null:
-		push_error("TileSet 加载失败: %s" % TILESET)
-		quit(1)
-		return
 	layer.tile_set = ts
-
-	# ── 铺图 ──
 	layer.clear()
 
-	# 敌人路径与站位（像素 -> 瓦片行）
-	var ground_row: int = 160 / TILE          # = 10
-	var path_rows: Array[int] = [ground_row - 1, ground_row, ground_row + 1]
-
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 20261015   # 固定种子，保证每次铺出来一样
+	rng.seed = 20261015
 
-	var painted_path: int = 0
-	var painted_grass: int = 0
-	var painted_concrete: int = 0
+	var n_grass: int = 0
+	var n_path: int = 0
+	var n_concrete: int = 0
 
 	for y: int in range(MAP_H):
 		for x: int in range(MAP_W):
 			var cell := Vector2i(x, y)
-			var px: int = x * TILE + TILE / 2
-			var py: int = y * TILE + TILE / 2
 
-			# 大本营周围：水泥
-			if px >= 400 and py >= 100 and py <= 220:
-				var src: int = SRC_CONCRETE_CRACKED if rng.randf() < 0.3 else SRC_CONCRETE
+			# 据点周围铺水泥（据点在右侧走廊行上）
+			if x >= 17 and y >= 5 and y <= 9:
+				var src: int = SRC_CONCRETE_CRACKED if rng.randf() < 0.28 else SRC_CONCRETE
 				layer.set_cell(cell, src, Vector2i.ZERO)
-				painted_concrete += 1
+				n_concrete += 1
 				continue
 
-			# 敌人走廊：石砖路
-			if path_rows.has(y) and px >= 16 and px <= 440:
+			# 敌人走廊：石砖路（走廊行上下各一格，共 3 格宽）
+			if absi(y - PATH_ROW) <= 1 and x >= 1 and x <= 21:
 				layer.set_cell(cell, SRC_PATH, Vector2i.ZERO)
-				painted_path += 1
+				n_path += 1
 				continue
 
-			# 其余：草地，三种随机
+			# 其余草地（三色随机）
 			var r: float = rng.randf()
-			var grass_src: int = SRC_GRASS_A
-			if r < 0.22:
-				grass_src = SRC_GRASS_B
-			elif r < 0.32:
-				grass_src = SRC_GRASS_C
-			layer.set_cell(cell, grass_src, Vector2i.ZERO)
-			painted_grass += 1
+			var g: int = SRC_GRASS_A
+			if r < 0.20:
+				g = SRC_GRASS_B
+			elif r < 0.30:
+				g = SRC_GRASS_C
+			layer.set_cell(cell, g, Vector2i.ZERO)
+			n_grass += 1
 
-	# 路径上点缀几块格栅
-	layer.set_cell(Vector2i(9, ground_row), SRC_GRATE, Vector2i.ZERO)
-	layer.set_cell(Vector2i(18, ground_row), SRC_GRATE, Vector2i.ZERO)
+	# 走廊上点缀格栅
+	layer.set_cell(Vector2i(4, PATH_ROW), SRC_GRATE, Vector2i.ZERO)
+	layer.set_cell(Vector2i(14, PATH_ROW), SRC_GRATE, Vector2i.ZERO)
 
-	print("  草地 %d 格 / 石路 %d 格 / 水泥 %d 格" % [painted_grass, painted_path, painted_concrete])
+	print("  草地 %d / 石路 %d / 水泥 %d 格" % [n_grass, n_path, n_concrete])
 
-	# ── 存回场景 ──
 	var new_packed := PackedScene.new()
-	var err: int = new_packed.pack(root)
+	err = new_packed.pack(root)
 	if err != OK:
 		push_error("pack 失败: %d" % err)
 		quit(1)
 		return
 	err = ResourceSaver.save(new_packed, MAP_SCENE)
 	if err != OK:
-		push_error("保存场景失败: %d" % err)
+		push_error("地图保存失败: %d" % err)
 		quit(1)
 		return
-
-	print("  已写回 %s" % MAP_SCENE)
-	# 释放临时实例，否则退出时会报一堆 RID/ObjectDB 泄漏，容易让人误以为出错
+	print("  地图已写回 %s" % MAP_SCENE)
+	# 释放临时实例，否则退出时报一堆 RID/ObjectDB 泄漏，容易让人误以为出错
 	root.free()
+
 	print("")
-	print(">>> 地形铺设完毕 <<<")
+	print(">>> 关卡重建完毕 <<<")
 	quit(0)
+
+
+## 按 7 张地形图重建 TileSet（tile_size = TILE，源区域 = 源图尺寸，1:1 无缩放）
+func _build_tileset() -> TileSet:
+	var ts := TileSet.new()
+	ts.tile_size = Vector2i(TILE, TILE)
+
+	var names: Array[String] = [
+		"tile_grass_01", "tile_grass_02", "tile_grass_03",
+		"tile_path_01", "tile_concrete_01", "tile_concrete_04", "tile_grate_01",
+	]
+	for n: String in names:
+		var path: String = TILE_SRC_DIR + n + ".png"
+		if not ResourceLoader.exists(path, "Texture2D"):
+			push_error("地形素材缺失: %s" % path)
+			return null
+		var tex: Texture2D = load(path) as Texture2D
+		var source := TileSetAtlasSource.new()
+		source.texture = tex
+		source.texture_region_size = Vector2i(tex.get_width(), tex.get_height())
+		source.create_tile(Vector2i.ZERO)
+		ts.add_source(source)
+	return ts

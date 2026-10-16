@@ -91,8 +91,8 @@ func _build_nodes() -> void:
 	var shape := CollisionShape2D.new()
 	shape.name = "BodyShape"
 	var circle := CircleShape2D.new()
-	# 与精灵实际渲染尺寸匹配（美术画布 32px，主体约占 24px 宽）
-	circle.radius = 12.0
+	# 与精灵实际渲染尺寸匹配。随世界尺度 ×4（原 12）：精灵显示 128px，主体约占 96px 宽。
+	circle.radius = 48.0
 	shape.shape = circle
 	add_child(shape)
 

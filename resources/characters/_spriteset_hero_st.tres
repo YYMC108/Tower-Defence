@@ -1,0 +1,67 @@
+[gd_resource type="Resource" script_class="UnitSpriteSet" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_sprite_set.gd" id="1_ldq1k"]
+[ext_resource type="Script" path="res://scripts/data/sprite_sheet_def.gd" id="2_jylgo"]
+
+[sub_resource type="Resource" id="Resource_3sjwo"]
+script = ExtResource("2_jylgo")
+texture_path = "res://assets/sprites/hero/st_idle.png"
+frame_count = 4
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_s0dfx"]
+script = ExtResource("2_jylgo")
+animation_name = &"run"
+texture_path = "res://assets/sprites/hero/st_run.png"
+frame_count = 14
+fps = 10.0
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_ei42t"]
+script = ExtResource("2_jylgo")
+animation_name = &"attack_1"
+texture_path = "res://assets/sprites/hero/st_attack_1.png"
+frame_count = 12
+fps = 12.0
+loop = false
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_yrmkp"]
+script = ExtResource("2_jylgo")
+animation_name = &"attack_2"
+texture_path = "res://assets/sprites/hero/st_attack_2.png"
+frame_count = 6
+fps = 12.0
+loop = false
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_3pi8b"]
+script = ExtResource("2_jylgo")
+animation_name = &"attack_3"
+texture_path = "res://assets/sprites/hero/st_attack_3.png"
+frame_count = 12
+fps = 12.0
+loop = false
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_oqrru"]
+script = ExtResource("2_jylgo")
+animation_name = &"hurt"
+texture_path = "res://assets/sprites/hero/st_hurt.png"
+frame_count = 2
+fps = 12.0
+loop = false
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_gvu76"]
+script = ExtResource("2_jylgo")
+animation_name = &"recover"
+texture_path = "res://assets/sprites/hero/st_recover.png"
+frame_count = 4
+fps = 12.0
+loop = false
+frame_durations = PackedFloat32Array()
+
+[resource]
+script = ExtResource("1_ldq1k")
+sheets = [SubResource("Resource_3sjwo"), SubResource("Resource_s0dfx"), SubResource("Resource_ei42t"), SubResource("Resource_yrmkp"), SubResource("Resource_3pi8b"), SubResource("Resource_oqrru"), SubResource("Resource_gvu76")]

@@ -17,26 +17,61 @@ extends SceneTree
 
 const CHARACTER_SET_DIR: String = "res://resources/characters/"
 const ENEMY_SET_DIR: String = "res://resources/enemies/"
+const LEVEL_SET_DIR: String = "res://resources/levels/"
 
 ## 期望表：spriteset 文件 -> { 动画名: [帧数, 帧宽, 帧高] }
-## 数据来源：ART_HANDOVER.md（已实测校验过，与素材实际像素一致）
+## 数据来源：ART_HANDOVER.md 第一节那张自动生成的交付表（已逐项实测校验一致）
 const EXPECTED: Dictionary = {
 	"characters/_spriteset_hero_ninja.tres": {
 		"idle": [4, 128, 128],
 		"run": [8, 128, 128],
-		"attack": [8, 256, 128],   # ← 非正方形帧，就是这里出过 bug
+		# 三段连招：画布 384x256（挥剑弧线装不下 128），非正方形帧
+		"attack_1": [4, 384, 256],
+		"attack_2": [4, 384, 256],
+		"attack_3": [5, 384, 256],
+		"hurt": [2, 128, 128],
 	},
-	"characters/_spriteset_tower_archer.tres": {"idle": [1, 64, 64]},
-	"characters/_spriteset_tower_healer.tres": {"idle": [1, 64, 64]},
+	"characters/_spriteset_hero_st.tres": {
+		"idle": [4, 128, 128],
+		"run": [14, 128, 128],
+		"attack_1": [12, 128, 128],
+		"attack_2": [6, 128, 128],
+		"attack_3": [12, 128, 128],
+		"hurt": [2, 128, 128],
+		"recover": [4, 128, 128],
+	},
+	"characters/_spriteset_tower_archer.tres": {"idle": [4, 64, 64]},
+	"characters/_spriteset_tower_healer.tres": {"idle": [4, 64, 64]},
 	"enemies/_spriteset_melee_grunt.tres": {
 		"idle": [1, 32, 32],
 		"run": [5, 32, 32],
+		"attack": [5, 32, 32],
+		"hurt": [2, 32, 32],
+	},
+	"enemies/_spriteset_melee_brute.tres": {
+		"idle": [1, 32, 32],
+		# 重装敌人更宽，32 装不下 —— 又是非正方形帧
+		"run": [7, 64, 32],
+		"attack": [13, 64, 32],
+		"hurt": [2, 32, 32],
 	},
 	"enemies/_spriteset_ranged_archer.tres": {
 		"idle": [1, 32, 32],
 		"run": [16, 32, 32],
+		"attack": [7, 32, 32],
+		"reload": [7, 32, 32],
+		"hurt": [2, 32, 32],
+	},
+	"levels/_spriteset_base.tres": {
+		"idle": [1, 256, 256],
+		"damaged": [1, 256, 256],
+		"critical": [1, 256, 256],
 	},
 }
+
+## 世界尺度：所有"单位"最终都显示成这个尺寸（见 DESIGN.md 15.11）
+## 各单位的 sprite_scale 不同（主角 1.0 / 塔 2.0 / 敌人 4.0），但乘上画布后必须一致。
+const UNIT_DISPLAY_SIZE: float = 128.0
 
 var _fail: int = 0
 var _checks: int = 0
@@ -48,13 +83,9 @@ func _init() -> void:
 
 	for rel_path: String in EXPECTED.keys():
 		var expect: Dictionary = EXPECTED[rel_path]
-		var full_path: String = "res://resources/" + rel_path
-		if rel_path.begins_with("characters/"):
-			full_path = CHARACTER_SET_DIR + rel_path.trim_prefix("characters/")
-		else:
-			full_path = ENEMY_SET_DIR + rel_path.trim_prefix("enemies/")
+		var full_path: String = _set_path(rel_path)
 
-		print("--- %s ---" % rel_path.trim_prefix("characters/").trim_prefix("enemies/"))
+		print("--- %s ---" % full_path.get_file())
 		var sprite_set: UnitSpriteSet = load(full_path) as UnitSpriteSet
 		if sprite_set == null:
 			print("  [失败] 无法加载 %s" % full_path)
@@ -85,6 +116,7 @@ func _init() -> void:
 	_check_animation_speed_is_one()
 	_check_flip_exists()
 	_check_durations_sane()
+	_check_display_size_consistent()
 
 	print("")
 	if _fail == 0:
@@ -92,6 +124,17 @@ func _init() -> void:
 	else:
 		print(">>> 有 %d / %d 项失败 <<<" % [_fail, _checks])
 	quit(_fail)
+
+
+## "characters/xxx" / "enemies/xxx" / "levels/xxx" -> 完整资源路径
+func _set_path(rel_path: String) -> String:
+	if rel_path.begins_with("characters/"):
+		return CHARACTER_SET_DIR + rel_path.trim_prefix("characters/")
+	if rel_path.begins_with("enemies/"):
+		return ENEMY_SET_DIR + rel_path.trim_prefix("enemies/")
+	if rel_path.begins_with("levels/"):
+		return LEVEL_SET_DIR + rel_path.trim_prefix("levels/")
+	return "res://resources/" + rel_path
 
 
 func _check_animation(frames: SpriteFrames, anim: StringName, want_count: int,
@@ -175,10 +218,13 @@ func _check_durations_sane() -> void:
 	_checks += 1
 	var rel_paths: Array[String] = [
 		CHARACTER_SET_DIR + "_spriteset_hero_ninja.tres",
+		CHARACTER_SET_DIR + "_spriteset_hero_st.tres",
 		CHARACTER_SET_DIR + "_spriteset_tower_archer.tres",
 		CHARACTER_SET_DIR + "_spriteset_tower_healer.tres",
 		ENEMY_SET_DIR + "_spriteset_melee_grunt.tres",
+		ENEMY_SET_DIR + "_spriteset_melee_brute.tres",
 		ENEMY_SET_DIR + "_spriteset_ranged_archer.tres",
+		LEVEL_SET_DIR + "_spriteset_base.tres",
 	]
 	var too_long: PackedStringArray = PackedStringArray()
 	var summary: PackedStringArray = PackedStringArray()
@@ -209,4 +255,58 @@ func _check_durations_sane() -> void:
 		for s: String in too_long:
 			print("        %s" % s)
 		print("        提示：逐帧时长很可能不是「秒」，而是相对权重或其它单位。")
+		_fail += 1
+
+
+## 尺度一致性检查：所有"单位"最终必须显示成同样大小（UNIT_DISPLAY_SIZE）。
+##
+## 各单位源生画布不同（主角 128 / 塔 64 / 敌人 32），靠 sprite_scale 统一
+## （1.0 / 2.0 / 4.0）。若某一处写错，某个单位就会明显过大或过小 ——
+## 而这种错误在编辑器里要逐个点开 .tres 才看得出来，这里一次全查。
+func _check_display_size_consistent() -> void:
+	_checks += 1
+	var units: Array[String] = [
+		"res://resources/characters/hero_ninja.tres",
+		"res://resources/characters/hero_st.tres",
+		"res://resources/characters/tower_archer.tres",
+		"res://resources/characters/tower_healer.tres",
+		"res://resources/enemies/melee_grunt.tres",
+		"res://resources/enemies/melee_brute.tres",
+		"res://resources/enemies/ranged_archer.tres",
+	]
+	var bad: PackedStringArray = PackedStringArray()
+	var lines: PackedStringArray = PackedStringArray()
+
+	for path: String in units:
+		var res: Resource = load(path)
+		if res == null:
+			bad.append("%s 加载失败" % path.get_file())
+			continue
+		var scale_v: float = float(res.get("sprite_scale"))
+		var set_res: UnitSpriteSet = res.get("sprite_set") as UnitSpriteSet
+		if set_res == null or set_res.sheets.is_empty():
+			bad.append("%s 没有 sprite_set" % path.get_file())
+			continue
+		# 取第一个动画的第一帧画布尺寸（同单位所有动画画布可能不同，但显示尺寸应一致）
+		var sheet: SpriteSheetDef = set_res.sheets[0]
+		var tex: Texture2D = load(sheet.texture_path) as Texture2D
+		if tex == null:
+			bad.append("%s 贴图加载失败" % path.get_file())
+			continue
+		var canvas_h: float = float(tex.get_height())
+		var display: float = canvas_h * scale_v
+		lines.append("%s=%.0fpx" % [path.get_file().trim_suffix(".tres"), display])
+		if absf(display - UNIT_DISPLAY_SIZE) > 0.5:
+			bad.append("%s 显示 %.0fpx（应为 %.0f）" % [
+				path.get_file(), display, UNIT_DISPLAY_SIZE,
+			])
+
+	if bad.is_empty():
+		print("  [通过] 所有单位显示尺寸一致 = %.0fpx" % UNIT_DISPLAY_SIZE)
+		print("        %s" % ", ".join(lines))
+	else:
+		print("  [失败] 以下单位的显示尺寸不一致：")
+		for s: String in bad:
+			print("        %s" % s)
+		print("        提示：检查该 .tres 的 sprite_scale（主角 1.0 / 塔 2.0 / 敌人 4.0）")
 		_fail += 1

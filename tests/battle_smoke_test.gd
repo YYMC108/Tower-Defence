@@ -19,9 +19,26 @@ extends Node
 ## 注意：headless 没有鼠标，主角的"鼠标攻击"不会触发。
 ## 这是有意的 —— 本测试只验证**不依赖输入**的部分（寻路、阻挡、复活、大本营）。
 ## 主角攻击手感必须由人在编辑器里按 F5 试。
+##
+## ⚠️ 排查提示：本测试如果**一行都不打印、进程也不退出**，那多半不是逻辑卡死，
+##    而是脚本有**解析错误**：解析失败 → _ready() 从不执行 → 场景空转 → 永不 quit。
+##    逐行等下去是查不到的，直接这样定位（只解析、不执行）：
+##
+##      godot --headless --path . --check-only --script res://tests/battle_smoke_test.gd
+##
+##    看有没有 `Parse Error`。若只看到
+##    `Compile Error: Identifier not found: SaveManager` 那是**预期的**——
+##    --script 模式不注册 autoload，本测试用场景模式跑，不受影响。
+##
+##    真实教训：一次改测试时重复声明了变量 base_pos，结果表现为"测试卡死"，
+##    浪费了一轮排查。解析错误在这种场景下的症状是**静默挂起**，不是报错退出。
 
 const BATTLE_SCENE: String = "res://scenes/battle/battle_root.tscn"
-const STEP: float = 1.0 / 60.0
+## 测试的**观察粒度**，不是物理步长 —— 物理始终按引擎自己的 60Hz 跑，
+## 这个值只决定测试多久 yield 一次去查看状态。取 1/20 而不是 1/60：
+## 视口放大到 1536x960 后 headless 帧率下降，await 次数太多会让测试极慢。
+## 本测试的判定都不依赖 1/60 级精度（最短的攻击间隔也有 1 秒）。
+const STEP: float = 1.0 / 20.0
 
 var _fail: int = 0
 var _checks: int = 0
@@ -107,12 +124,37 @@ func _run() -> void:
 		_check(true, "敌人已轮换（生成/死亡），跳过推进断言")
 
 	print("")
-	print("--- 4. 主角存活 → 构成物理阻挡 ---")
+	print("--- 4. 敌人攻击大本营 → 大本营掉血（确定性验证）---")
+	# 不依赖「敌人自己走过去」：塔可能提前把它们打死，波次提前清空而胜利 ——
+	# 那是合法结果，但会让断言变得不确定。这里直接把一个敌人放到大本营的
+	# 攻击距离之内：该处已在塔的射程之外，结果确定，专门验证「敌人→大本营」通路。
+	var base_before: float = _battle.state.base_health
+	var probe: EnemyUnit = _first_enemy() as EnemyUnit
+	if probe == null:
+		_check(false, "没有敌人可用于验证大本营伤害")
+	else:
+		# 复用第 1 步已取到的 base_pos（重复声明会解析错误）
+		probe.global_position = base_pos - Vector2(60.0, 0.0)
+		await _advance(3.0)
+		_check(_battle.state.base_health < base_before,
+			"敌人攻击大本营造成伤害（%.0f → %.0f）" % [
+				base_before, _battle.state.base_health,
+			])
+		# 验证完就让这个探针敌人退场，否则它会一直啃大本营，
+		# 使后面的波次永远清不掉（剩下的断言就失去意义了）。
+		if is_instance_valid(probe) and probe.is_alive():
+			probe.health.invulnerable = false
+			probe.health.apply_damage(Damage.new(999999.0, null, Damage.Type.TRUE))
+		await _advance(0.1)
+
+	print("")
+	print("--- 5. 主角存活 → 构成物理阻挡 ---")
 	if hero != null and hero.is_alive():
-		# 把主角挪到敌人前方，模拟玩家站在路上挡人
+		# 把主角挪到敌人前方，模拟玩家站在路上挡人。
+		# 偏移量 96 = 单位显示尺寸 128 的 3/4（世界尺度 ×4 后的值，原为 24）。
 		var enemy: Node2D = _first_enemy()
 		if enemy != null:
-			hero.global_position = enemy.global_position + Vector2(24, 0)
+			hero.global_position = enemy.global_position + Vector2(96, 0)
 		await _advance(0.8)
 		_check(hero.collision_layer == PhysicsLayers.bit(&"player"),
 			"主角存活时碰撞层 = player 层（值 %d）" % hero.collision_layer)
@@ -122,7 +164,7 @@ func _run() -> void:
 		_check(false, "主角存活（检查开始时）")
 
 	print("")
-	print("--- 5. 主角死亡 → 碰撞体关闭 ---")
+	print("--- 6. 主角死亡 → 碰撞体关闭 ---")
 	if hero != null:
 		hero.health.invulnerable = false
 		hero.health.apply_damage(Damage.new(999999.0, null, Damage.Type.TRUE))
@@ -133,31 +175,30 @@ func _run() -> void:
 		_check(_battle.state.hero_death_count == 1, "死亡计数 = 1（布防阶段死亡也计数）")
 
 	print("")
-	print("--- 6. 近战抵达大本营 → 大本营掉血 ---")
-	var base_before: float = _battle.state.base_health
-	var waited: float = 0.0
-	while waited < 25.0 and _battle.state.base_health >= base_before and not _battle.rounds.is_battle_over():
-		await _advance(0.5)
-		waited += 0.5
-	_check(_battle.state.base_health < base_before,
-		"大本营受到伤害（%.0f → %.0f，等待 %.1f 秒）" % [
-			base_before, _battle.state.base_health, waited,
-		])
-
-	print("")
 	print("--- 7. 主角递增惩罚复活 ---")
+	# 用 0.05 秒粒度轮询，在复活那一刻取血量。
+	#
+	# 两个坑：
+	#   1. 不能最后再查 —— 敌人仇恨半径 304，主角一复活就可能立刻挨打，
+	#      事后读到的不是复活时的血量。
+	#   2. 不能用「逐帧」轮询（STEP=1/60）—— 视口放大到 1536x960 后 headless
+	#      帧率下降，逐帧轮询会让模拟时间推进远慢于真实时间，测试变得极慢。
+	#      敌人攻击间隔 ≥ 1 秒，0.05 秒粒度足够精确。
+	const REVIVE_POLL_STEP: float = 0.05
 	var revived: bool = false
+	var health_at_revive: float = -1.0
 	var waited2: float = 0.0
 	while waited2 < 14.0 and not revived:
-		await _advance(0.25)
-		waited2 += 0.25
+		await _advance(REVIVE_POLL_STEP)
+		waited2 += REVIVE_POLL_STEP
 		if hero != null and hero.is_alive():
 			revived = true
+			health_at_revive = hero.health.current_health
 	_check(revived, "主角已复活（等待 %.1f 秒，第 1 次档位应为 5 秒）" % waited2)
 	if hero != null:
 		_check(hero.collision_layer != 0, "复活后碰撞层恢复（重新构成阻挡）")
-		_check(is_equal_approx(hero.health.current_health, hero.data.max_health),
-			"复活后满血（%.0f / %.0f）" % [hero.health.current_health, hero.data.max_health])
+		_check(is_equal_approx(health_at_revive, hero.data.max_health),
+			"复活瞬间满血（%.0f / %.0f）" % [health_at_revive, hero.data.max_health])
 
 	print("")
 	print("--- 8. 复活惩罚曲线递增与封顶 ---")
@@ -173,9 +214,10 @@ func _run() -> void:
 
 	print("")
 	print("--- 9. 波次清空与胜负判定 ---")
+	# 35 秒足够：诊断实测整局在 ~18 秒内结束（塔会把近战清光）。
 	var cleared: bool = false
 	var waited3: float = 0.0
-	while waited3 < 60.0 and not _battle.rounds.is_battle_over():
+	while waited3 < 35.0 and not _battle.rounds.is_battle_over():
 		await _advance(0.5)
 		waited3 += 0.5
 		if _battle.registry.enemy_count() == 0 and _battle.rounds.phase == RoundManager.Phase.SETTLE:

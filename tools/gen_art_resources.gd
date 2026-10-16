@@ -2,88 +2,113 @@
 extends SceneTree
 ## 一次性生成美术配置资源（.tres）。
 ##
-## 为什么用脚本生成而不是手写 .tres：
-## 手写内联子资源时极易把 script 指向错的资源类（之前踩过：
-## WaveSpawnEntry 写成了 WaveData，属性静默丢失）。用 ResourceSaver
-## 生成可以保证类型与格式完全正确。
-##
 ## 用法：godot --headless --path . --script res://tools/gen_art_resources.gd
 ##
-## ⚠️⚠️ 这是**一次性引导脚本**，不是常规工具。⚠️⚠️
-## 重跑它会**覆盖** resources/ 下这些 .tres 里的手工调整。
+## ⚠️⚠️ 这是**一次性引导脚本**，重跑会**覆盖** resources/ 下这些 .tres 里的手工调整。
+##   - 只想调动画快慢/帧数？**直接改 .tres**，不要重跑本脚本。
+##   - 确实要重跑（例如新增角色）？先把 .tres 里的调整同步回这里。
 ##
-## 所以：
-##   - 只想调动画快慢/帧数？**直接改 .tres**（在 Godot 检查器里点开就能改），
-##     不要重跑本脚本。
-##   - 确实要重跑本脚本（例如新增角色）？先把 .tres 里的调整同步回这里，
-##     否则会被打回原样。
+## ─────────────────────────────────────────────────────────────
+## 世界尺度：单位显示 128px、瓦片 64px、视口 1536x960
 ##
-## 动画速度在哪调：每个 _spriteset_*.tres 里 SpriteSheetDef 的 `fps` 字段。
-## 注意 sprite_animator.gd 把 animation_speed 固定为 1.0，速度**只**由 fps
-## （即逐帧 duration = 1/fps）决定，改 fps 就是改快慢。
+## 与改造前的比例关系（改造前：单位 32px、瓦片 16px、视口 480x320）：
+##   - 单位与瓦片都是 ×4，所以「一个单位占 2x2 格」这个比例不变 → 玩法不变
+##   - 视口 480x320 → 1536x960，所以同屏可见 24x15 格（原本 30x20）
+##   - **距离与速度全部 ×4**；体力/伤害/时间**不缩放**（它们是抽象值，不是空间量）
 ##
-## ⚠️ frame_count 必须显式填写：帧**不一定**是正方形的。
-## ninja_attack.png 是 2048×128 但每帧 256×128（挥刀横向拉宽），共 8 帧；
-## 若按「宽 ÷ 高」推断会算成 16 帧，每帧被切成两半，角色只剩半个身体。
+## 因此的 sprite_scale（源生画布 → 128px 显示）：
+##   主角 128px 画布 → 1.0      塔 64px → 2.0     敌人 32px → 4.0
+##   据点 256px → 1.0           特效 32px → 4.0   UI 128px → 1.0
+##
+## ⚠️ frame_count 必须显式填写：帧不一定是正方形的
+##   （主角三段攻击是 384x256、重装敌人 run/attack 是 64x32）
+## ─────────────────────────────────────────────────────────────
 
 const SPRITES := "res://assets/sprites/"
 const CHARACTERS := "res://resources/characters/"
 const ENEMIES := "res://resources/enemies/"
+const LEVELS := "res://resources/levels/"
+
+## 世界尺度：所有「空间量」（距离/速度/半径）都乘这个数
+const S: float = 4.0
 
 
 func _init() -> void:
-	print("=== 生成美术配置资源 ===")
+	print("=== 生成美术配置资源（世界尺度 x%.0f）===" % S)
 	var written: int = 0
 
-	# ── 主角 ninja ──────────────────────────────
+	# ═══════════ 主角 ninja ═══════════
 	var ninja_set := UnitSpriteSet.new()
 	ninja_set.sheets = [
 		_sheet(&"idle", SPRITES + "hero/ninja_idle.png", 4, 8.0, true),
-		_sheet(&"run", SPRITES + "hero/ninja_run.png", 8, 11.1, true),
-		# 攻击：8 帧 × 256×128（非正方形，frame_count 必须显式写 8）
-		#
-		# 逐帧时长说明（这里踩过坑，务必看清楚）：
-		#   美术文档给的节奏是 1.1 / 0.7 / 0.6 / 0.8 和 0.5 / 0.7 / 0.9 / 1.6。
-		#   若直接按「秒」使用，总长 6.90 秒，而攻击间隔只有 0.42 秒 ——
-		#   动画永远播不完第一帧，角色会卡在攻击姿势上。
-		#   故按**相对权重**处理，归一化到文档声明的 10 fps（8 帧 = 0.8 秒）。
-		#   ⚠️ 该单位仍待与美术确认（秒？权重？1/10 秒？），
-		#      确认后请回来改成准确值。
-		#
-		# 另注意：0.8 秒仍 > 0.42 秒的攻击间隔。启用攻击动画前必须先解决这一点
-		#（缩短动画、或让动画不因重播而重置）。相关开关见 hero_unit.gd 的
-		# USE_ATTACK_ANIMATION（当前为 false，即本期不做攻击动画打断）。
-		_sheet(&"attack", SPRITES + "hero/ninja_attack.png", 8, 10.0, false,
-			PackedFloat32Array([
-				0.1275, 0.0812, 0.0696, 0.0928, 0.0580, 0.0812, 0.1043, 0.1855,
-			])),
+		_sheet(&"run", SPRITES + "hero/ninja_run.png", 8, 11.11, true),
+		# 三段连招：三个独立动画，按「连点三次鼠标」依次播放
+		_sheet(&"attack_1", SPRITES + "hero/ninja_attack_1.png", 4, 12.0, false),
+		_sheet(&"attack_2", SPRITES + "hero/ninja_attack_2.png", 4, 12.0, false),
+		_sheet(&"attack_3", SPRITES + "hero/ninja_attack_3.png", 5, 12.0, false),
+		_sheet(&"hurt", SPRITES + "hero/ninja_hurt.png", 2, 12.0, false),
 	]
-	written += _save(ninja_set, "res://resources/characters/_spriteset_hero_ninja.tres")
+	written += _save(ninja_set, CHARACTERS + "_spriteset_hero_ninja.tres")
 
-	var hero := CharacterData.new()
-	hero.id = &"hero_ninja"
-	hero.display_name = "赛博忍者"
-	hero.description = "主输出，玩家操控。同时是近战通往大本营的唯一物理阻挡。"
-	hero.role = CharacterData.Role.HERO
-	hero.tower_kind = CharacterData.TowerKind.NONE
-	# ↓ 数值保持 M1 原样（用户已实测手感不错），仅替换美术
-	hero.max_health = 140.0
-	hero.move_speed = 92.0
-	hero.attack_damage = 14.0
-	hero.attack_interval = 0.42
-	hero.attack_range = 54.0
-	hero.damage_type = Damage.Type.PHYSICAL
-	hero.targeting_strategy = &"nearest"
-	hero.sprite_set = ninja_set
-	hero.sprite_scale = 0.25   # 128px 画布 -> 游戏内 32px
-	hero.copy_limit = 1
-	hero.unlocked_by_default = true
-	written += _save(hero, CHARACTERS + "hero_ninja.tres")
+	var ninja := CharacterData.new()
+	ninja.id = &"hero_ninja"
+	ninja.display_name = "赛博忍者"
+	ninja.description = "主角。主输出，同时是近战通往大本营的唯一物理阻挡。"
+	ninja.role = CharacterData.Role.HERO
+	ninja.tower_kind = CharacterData.TowerKind.NONE
+	ninja.max_health = 140.0
+	ninja.move_speed = 92.0 * S              # 368
+	ninja.attack_damage = 14.0
+	ninja.attack_interval = 0.42
+	ninja.attack_range = 54.0 * S            # 216
+	ninja.damage_type = Damage.Type.PHYSICAL
+	ninja.targeting_strategy = &"nearest"
+	ninja.sprite_set = ninja_set
+	ninja.sprite_scale = 1.0                 # 128px 画布 -> 128px 显示（1:1，细节全可见）
+	ninja.copy_limit = 1
+	ninja.unlocked_by_default = true
+	written += _save(ninja, CHARACTERS + "hero_ninja.tres")
 
-	# ── 输出塔 ──────────────────────────────────
+	# ═══════════ 主角 st（持盾，第二个主角）═══════════
+	var st_set := UnitSpriteSet.new()
+	st_set.sheets = [
+		_sheet(&"idle", SPRITES + "hero/st_idle.png", 4, 8.0, true),
+		_sheet(&"run", SPRITES + "hero/st_run.png", 14, 10.0, true),
+		_sheet(&"attack_1", SPRITES + "hero/st_attack_1.png", 12, 12.0, false),
+		_sheet(&"attack_2", SPRITES + "hero/st_attack_2.png", 6, 12.0, false),
+		_sheet(&"attack_3", SPRITES + "hero/st_attack_3.png", 12, 12.0, false),
+		_sheet(&"hurt", SPRITES + "hero/st_hurt.png", 2, 12.0, false),
+		_sheet(&"recover", SPRITES + "hero/st_recover.png", 4, 12.0, false),
+	]
+	written += _save(st_set, CHARACTERS + "_spriteset_hero_st.tres")
+
+	var st := CharacterData.new()
+	st.id = &"hero_st"
+	st.display_name = "重装持盾"
+	st.description = "第二个主角。偏坦：移动慢、伤害低，但很能扛。具体数值待策划定。"
+	st.role = CharacterData.Role.HERO
+	st.tower_kind = CharacterData.TowerKind.NONE
+	# ⚠️ 以下数值是**占位**：策划尚未定 st 的定位，先给一组「偏坦」的合理值
+	st.max_health = 260.0
+	st.move_speed = 70.0 * S                 # 280（比 ninja 慢）
+	st.attack_damage = 9.0
+	st.attack_interval = 0.55
+	st.attack_range = 44.0 * S               # 176（比 ninja 短）
+	st.damage_type = Damage.Type.PHYSICAL
+	st.targeting_strategy = &"nearest"
+	st.sprite_set = st_set
+	st.sprite_scale = 1.0
+	st.copy_limit = 1
+	# 暂未解锁：等选人界面（M4）做好再开放，避免与 ninja 争「默认主角」
+	st.unlocked_by_default = false
+	written += _save(st, CHARACTERS + "hero_st.tres")
+
+	# ═══════════ 输出塔 ═══════════
 	var archer_set := UnitSpriteSet.new()
-	archer_set.sheets = [_sheet(&"idle", SPRITES + "towers/tower_archer_idle.png", 1, 5.0, true)]
-	written += _save(archer_set, "res://resources/characters/_spriteset_tower_archer.tres")
+	archer_set.sheets = [
+		_sheet(&"idle", SPRITES + "towers/tower_archer_idle.png", 4, 6.0, true),
+	]
+	written += _save(archer_set, CHARACTERS + "_spriteset_tower_archer.tres")
 
 	var tower_archer := CharacterData.new()
 	tower_archer.id = &"tower_archer"
@@ -94,19 +119,21 @@ func _init() -> void:
 	tower_archer.max_health = 60.0
 	tower_archer.attack_damage = 9.0
 	tower_archer.attack_interval = 0.95
-	tower_archer.attack_range = 96.0
+	tower_archer.attack_range = 96.0 * S     # 384
 	tower_archer.damage_type = Damage.Type.PHYSICAL
 	tower_archer.targeting_strategy = &"nearest"
 	tower_archer.sprite_set = archer_set
-	tower_archer.sprite_scale = 0.5   # 64px 画布 -> 游戏内 32px
+	tower_archer.sprite_scale = 2.0          # 64px 画布 -> 128px 显示
 	tower_archer.copy_limit = 1
 	tower_archer.unlocked_by_default = true
 	written += _save(tower_archer, CHARACTERS + "tower_archer.tres")
 
-	# ── 治疗塔 ──────────────────────────────────
+	# ═══════════ 治疗塔 ═══════════
 	var healer_set := UnitSpriteSet.new()
-	healer_set.sheets = [_sheet(&"idle", SPRITES + "towers/tower_healer_idle.png", 1, 5.0, true)]
-	written += _save(healer_set, "res://resources/characters/_spriteset_tower_healer.tres")
+	healer_set.sheets = [
+		_sheet(&"idle", SPRITES + "towers/tower_healer_idle.png", 4, 6.0, true),
+	]
+	written += _save(healer_set, CHARACTERS + "_spriteset_tower_healer.tres")
 
 	var tower_healer := CharacterData.new()
 	tower_healer.id = &"tower_healer"
@@ -115,75 +142,57 @@ func _init() -> void:
 	tower_healer.role = CharacterData.Role.TOWER
 	tower_healer.tower_kind = CharacterData.TowerKind.HEAL
 	tower_healer.max_health = 50.0
-	tower_healer.attack_range = 110.0
+	tower_healer.attack_range = 110.0 * S    # 440
 	tower_healer.heal_amount = 6.0
 	tower_healer.heal_interval = 1.6
 	tower_healer.targeting_strategy = &"nearest"
 	tower_healer.sprite_set = healer_set
-	tower_healer.sprite_scale = 0.5
+	tower_healer.sprite_scale = 2.0
 	tower_healer.copy_limit = 1
 	tower_healer.unlocked_by_default = true
 	written += _save(tower_healer, CHARACTERS + "tower_healer.tres")
 
-	# ── 近战小兵 ────────────────────────────────
+	# ═══════════ 近战小兵 ═══════════
 	var grunt_set := UnitSpriteSet.new()
 	grunt_set.sheets = [
 		_sheet(&"idle", SPRITES + "enemies/melee_grunt_idle.png", 1, 5.0, true),
 		_sheet(&"run", SPRITES + "enemies/melee_grunt_run.png", 5, 10.0, true),
+		_sheet(&"attack", SPRITES + "enemies/melee_grunt_attack.png", 5, 12.0, false),
+		_sheet(&"hurt", SPRITES + "enemies/melee_grunt_hurt.png", 2, 12.0, false),
 	]
-	written += _save(grunt_set, "res://resources/enemies/_spriteset_melee_grunt.tres")
+	written += _save(grunt_set, ENEMIES + "_spriteset_melee_grunt.tres")
 
 	var grunt := EnemyData.new()
 	grunt.id = &"melee_grunt"
 	grunt.display_name = "近战小兵"
 	grunt.placeholder_color = Color(0.85, 0.25, 0.25)
 	grunt.can_damage_hero = true
-	grunt.can_damage_tower = false   # 近战免疫塔
+	grunt.can_damage_tower = false           # 近战免疫塔
 	grunt.can_damage_base = true
 	grunt.attack_mode = EnemyData.AttackMode.MELEE
 	grunt.attack_damage = 7.0
 	grunt.attack_interval = 1.0
-	grunt.attack_range = 26.0
-	grunt.building_attack_range = 26.0
+	grunt.attack_range = 26.0 * S            # 104
+	grunt.building_attack_range = 26.0 * S   # 104
 	grunt.max_health = 34.0
-	grunt.move_speed = 36.0
-	grunt.waypoint_reach_radius = 4.0
-	grunt.hero_detect_radius = 76.0
+	grunt.move_speed = 36.0 * S              # 144
+	grunt.waypoint_reach_radius = 4.0 * S    # 16
+	grunt.hero_detect_radius = 76.0 * S      # 304
 	grunt.reward_battle_currency = 1
 	grunt.sprite_set = grunt_set
-	grunt.sprite_scale = 1.0          # 32px 画布 -> 游戏内 32px
+	grunt.sprite_scale = 4.0                 # 32px 画布 -> 128px 显示
 	written += _save(grunt, ENEMIES + "melee_grunt.tres")
 
-	# ── 远程弓手 ────────────────────────────────
-	var archer_enemy_set := UnitSpriteSet.new()
-	archer_enemy_set.sheets = [
-		_sheet(&"idle", SPRITES + "enemies/ranged_archer_idle.png", 1, 5.0, true),
-		_sheet(&"run", SPRITES + "enemies/ranged_archer_run.png", 16, 20.0, true),
+	# ═══════════ 近战重装（批次二新增；run/attack 是 64x32 非正方形帧）═══════════
+	var brute_set := UnitSpriteSet.new()
+	brute_set.sheets = [
+		_sheet(&"idle", SPRITES + "enemies/melee_brute_idle.png", 1, 5.0, true),
+		_sheet(&"run", SPRITES + "enemies/melee_brute_run.png", 7, 8.0, true),
+		_sheet(&"attack", SPRITES + "enemies/melee_brute_attack.png", 13, 10.0, false),
+		_sheet(&"hurt", SPRITES + "enemies/melee_brute_hurt.png", 2, 12.0, false),
 	]
-	written += _save(archer_enemy_set, "res://resources/enemies/_spriteset_ranged_archer.tres")
+	written += _save(brute_set, ENEMIES + "_spriteset_melee_brute.tres")
 
-	var ranged := EnemyData.new()
-	ranged.id = &"ranged_archer"
-	ranged.display_name = "远程弓手"
-	ranged.placeholder_color = Color(0.95, 0.55, 0.15)
-	ranged.can_damage_hero = true
-	ranged.can_damage_tower = true   # 远程是唯一能拆塔的敌人
-	ranged.can_damage_base = false
-	ranged.attack_mode = EnemyData.AttackMode.RANGED
-	ranged.attack_damage = 6.0
-	ranged.attack_interval = 1.5
-	ranged.attack_range = 108.0
-	ranged.building_attack_range = 26.0
-	ranged.max_health = 26.0
-	ranged.move_speed = 30.0
-	ranged.waypoint_reach_radius = 4.0
-	ranged.hero_detect_radius = 90.0
-	ranged.reward_battle_currency = 1
-	ranged.sprite_set = archer_enemy_set
-	ranged.sprite_scale = 1.0
-	written += _save(ranged, ENEMIES + "ranged_archer.tres")
-
-	# ── 近战重装（暂无素材，保持占位方块）────────
 	var brute := EnemyData.new()
 	brute.id = &"melee_brute"
 	brute.display_name = "近战重装"
@@ -194,16 +203,89 @@ func _init() -> void:
 	brute.attack_mode = EnemyData.AttackMode.MELEE
 	brute.attack_damage = 14.0
 	brute.attack_interval = 1.4
-	brute.attack_range = 28.0
-	brute.building_attack_range = 28.0
+	brute.attack_range = 28.0 * S            # 112
+	brute.building_attack_range = 28.0 * S   # 112
 	brute.max_health = 90.0
-	brute.move_speed = 26.0
-	brute.waypoint_reach_radius = 4.0
-	brute.hero_detect_radius = 80.0
+	brute.move_speed = 26.0 * S              # 104
+	brute.waypoint_reach_radius = 4.0 * S    # 16
+	brute.hero_detect_radius = 80.0 * S      # 320
 	brute.reward_battle_currency = 2
-	# 美术尚未交付 melee_brute，留空 sprite_set → 自动回退占位方块
-	brute.sprite_scale = 1.0
+	brute.sprite_set = brute_set
+	brute.sprite_scale = 4.0
 	written += _save(brute, ENEMIES + "melee_brute.tres")
+
+	# ═══════════ 远程弓手 ═══════════
+	var archer_enemy_set := UnitSpriteSet.new()
+	archer_enemy_set.sheets = [
+		_sheet(&"idle", SPRITES + "enemies/ranged_archer_idle.png", 1, 5.0, true),
+		_sheet(&"run", SPRITES + "enemies/ranged_archer_run.png", 16, 20.0, true),
+		_sheet(&"attack", SPRITES + "enemies/ranged_archer_attack.png", 7, 12.0, false),
+		# reload：美术新增动作，本期接在 attack 之后一起播（打完一梭子换弹）
+		_sheet(&"reload", SPRITES + "enemies/ranged_archer_reload.png", 7, 10.0, false),
+		_sheet(&"hurt", SPRITES + "enemies/ranged_archer_hurt.png", 2, 12.0, false),
+	]
+	written += _save(archer_enemy_set, ENEMIES + "_spriteset_ranged_archer.tres")
+
+	var ranged := EnemyData.new()
+	ranged.id = &"ranged_archer"
+	ranged.display_name = "远程弓手"
+	ranged.placeholder_color = Color(0.95, 0.55, 0.15)
+	ranged.can_damage_hero = true
+	ranged.can_damage_tower = true           # 远程是唯一能拆塔的敌人
+	ranged.can_damage_base = false
+	ranged.attack_mode = EnemyData.AttackMode.RANGED
+	ranged.attack_damage = 6.0
+	ranged.attack_interval = 1.5
+	ranged.attack_range = 108.0 * S          # 432
+	ranged.building_attack_range = 26.0 * S  # 104
+	ranged.max_health = 26.0
+	ranged.move_speed = 30.0 * S             # 120
+	ranged.waypoint_reach_radius = 4.0 * S   # 16
+	ranged.hero_detect_radius = 90.0 * S     # 360
+	ranged.reward_battle_currency = 1
+	ranged.sprite_set = archer_enemy_set
+	ranged.sprite_scale = 4.0
+	written += _save(ranged, ENEMIES + "ranged_archer.tres")
+
+	# ═══════════ 关卡（含据点三态）═══════════
+	var base_set := UnitSpriteSet.new()
+	base_set.sheets = [
+		_sheet(&"idle", SPRITES + "base/base_idle.png", 1, 5.0, true),
+		_sheet(&"damaged", SPRITES + "base/base_damaged.png", 1, 5.0, true),
+		_sheet(&"critical", SPRITES + "base/base_critical.png", 1, 5.0, true),
+	]
+	written += _save(base_set, LEVELS + "_spriteset_base.tres")
+
+	var level := LevelData.new()
+	level.id = &"level_test_01"
+	level.display_name = "实验关卡 01"
+	level.description = "M1 实验田。1 个塔位、1 波近战敌人。改 waves 数组可加波次，改地图 TowerSlots 可加塔位，都不需要改代码。"
+	level.map_scene_path = "res://scenes/battle/map/test_level.tscn"
+	level.base_max_health = 100.0
+	level.starting_battle_currency = 10
+	level.hero_revive_base_seconds = 5.0
+	level.hero_revive_increment = 5.0
+	level.hero_revive_max_seconds = 30.0
+	level.reward_stars = 1
+	level.reward_gold = 10
+	# 据点三态（阈值在 base_unit.gd：DAMAGED_RATIO=0.6 / CRITICAL_RATIO=0.3）
+	level.base_sprite_set = base_set
+	level.base_sprite_scale = 1.0                 # 256px 画布 -> 256px 显示
+	level.base_display_size = Vector2(192, 192)   # 无素材时的调试方框（3x3 格）
+
+	# 波次：1 波 × 4 只近战小兵（与改造前一致，只改了空间尺度）
+	var wave := WaveData.new()
+	wave.id = &"wave_test_01"
+	wave.display_name = "测试波次 1"
+	wave.is_boss_wave = false
+	var entry := WaveSpawnEntry.new()
+	entry.enemy_data = grunt
+	entry.count = 4
+	entry.spawn_interval = 1.1
+	entry.delay_before = 0.0
+	wave.spawn_entries = [entry]
+	level.waves = [wave]
+	written += _save(level, LEVELS + "test_level.tres")
 
 	print("")
 	print("共写出 %d 个资源文件" % written)
@@ -211,19 +293,20 @@ func _init() -> void:
 	quit(0)
 
 
-func _sheet(anim: StringName, path: String, count: int, fps: float, loop: bool,
-		durations: PackedFloat32Array = PackedFloat32Array()) -> SpriteSheetDef:
+func _sheet(anim: StringName, path: String, count: int, fps: float, loop: bool) -> SpriteSheetDef:
 	var s := SpriteSheetDef.new()
 	s.animation_name = anim
 	s.texture_path = path
 	s.frame_count = count   # 显式填写，不依赖推断（帧不一定是正方形）
 	s.fps = fps
 	s.loop = loop
-	s.frame_durations = durations
 	return s
 
 
 func _save(res: Resource, path: String) -> int:
+	if res == null:
+		push_error("要保存的资源为 null: %s" % path)
+		return 0
 	res.take_over_path(path)
 	var err: int = ResourceSaver.save(res, path)
 	if err != OK:

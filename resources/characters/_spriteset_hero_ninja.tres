@@ -14,18 +14,45 @@ script = ExtResource("2_c77vc")
 animation_name = &"run"
 texture_path = "res://assets/sprites/hero/ninja_run.png"
 frame_count = 8
-fps = 11.1
+fps = 11.11
 frame_durations = PackedFloat32Array()
 
 [sub_resource type="Resource" id="Resource_mu77p"]
 script = ExtResource("2_c77vc")
-animation_name = &"attack"
-texture_path = "res://assets/sprites/hero/ninja_attack.png"
-frame_count = 8
-fps = 10.0
+animation_name = &"attack_1"
+texture_path = "res://assets/sprites/hero/ninja_attack_1.png"
+frame_count = 4
+fps = 12.0
 loop = false
-frame_durations = PackedFloat32Array(0.1275, 0.0812, 0.0696, 0.0928, 0.058, 0.0812, 0.1043, 0.1855)
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_g4p1b"]
+script = ExtResource("2_c77vc")
+animation_name = &"attack_2"
+texture_path = "res://assets/sprites/hero/ninja_attack_2.png"
+frame_count = 4
+fps = 12.0
+loop = false
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_duvf4"]
+script = ExtResource("2_c77vc")
+animation_name = &"attack_3"
+texture_path = "res://assets/sprites/hero/ninja_attack_3.png"
+frame_count = 5
+fps = 12.0
+loop = false
+frame_durations = PackedFloat32Array()
+
+[sub_resource type="Resource" id="Resource_gem0n"]
+script = ExtResource("2_c77vc")
+animation_name = &"hurt"
+texture_path = "res://assets/sprites/hero/ninja_hurt.png"
+frame_count = 2
+fps = 12.0
+loop = false
+frame_durations = PackedFloat32Array()
 
 [resource]
 script = ExtResource("1_qlegm")
-sheets = [SubResource("Resource_82ctt"), SubResource("Resource_5l2uh"), SubResource("Resource_mu77p")]
+sheets = [SubResource("Resource_82ctt"), SubResource("Resource_5l2uh"), SubResource("Resource_mu77p"), SubResource("Resource_g4p1b"), SubResource("Resource_duvf4"), SubResource("Resource_gem0n")]

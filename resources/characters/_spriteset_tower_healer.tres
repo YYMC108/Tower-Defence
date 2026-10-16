@@ -6,8 +6,8 @@
 [sub_resource type="Resource" id="Resource_lwg7f"]
 script = ExtResource("2_h37m3")
 texture_path = "res://assets/sprites/towers/tower_healer_idle.png"
-frame_count = 1
-fps = 5.0
+frame_count = 4
+fps = 6.0
 frame_durations = PackedFloat32Array()
 
 [resource]

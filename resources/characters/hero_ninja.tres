@@ -7,13 +7,12 @@
 script = ExtResource("1_q6a4p")
 id = &"hero_ninja"
 display_name = "赛博忍者"
-description = "主输出，玩家操控。同时是近战通往大本营的唯一物理阻挡。"
+description = "主角。主输出，同时是近战通往大本营的唯一物理阻挡。"
 role = 0
 max_health = 140.0
-move_speed = 92.0
+move_speed = 368.0
 attack_damage = 14.0
 attack_interval = 0.42
-attack_range = 54.0
+attack_range = 216.0
 sprite_set = ExtResource("2_672v8")
-sprite_scale = 0.25
 unlocked_by_default = true
