@@ -23,17 +23,6 @@ GameState="*res://autoload/game_state.gd"
 
 [display]
 
-; 基准视口 1536x960（= 480x320 × 3.2，但瓦片/单位是 ×4）。
-;
-; 为什么是 1536x960：
-;   - 与 3:2 屏幕成整数倍关系。开发机是 3072x1920，1536x960 正好是它的 1/2，
-;     即全屏时**整数 2 倍**显示，像素完全锐利、无黑边、无非整数缩放。
-;   - 瓦片 64px 时正好是 24x15 格 = 1536x960，地图与视口一比一。
-;   - 窗口默认就用 1536x960：此时游戏以 1:1 原生分辨率显示，
-;     美术的 1 像素 = 屏幕 1 像素，细节完全可见。
-;
-; 改这两个数字等于改整个世界尺度，改动后必须重跑：
-;   tests/check_project_config.gd 与 tests/battle_smoke_test.tscn
 window/size/viewport_width=1536
 window/size/viewport_height=960
 window/size/window_width_override=1536

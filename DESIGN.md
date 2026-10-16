@@ -954,6 +954,11 @@ HitEffectSpawner.spawn_at(受击点世界坐标, 朝向x)
 > 所以那一行**看不到是正常的，行为不受影响**。不要为了"补上它"而反复折腾。
 > `tests/check_project_config.gd` 用 `ProjectSettings.get_setting()` 校验的是**生效值**，不是文件里有没有那一行。
 
+> ⚠️ **不要在 `project.godot` 的段落里写注释** —— 实测：Godot 编辑器保存时会
+> **剥掉加在各 `[section]` 里的注释**（只保留文件头那 7 行自带的）。
+> 我曾在 `[display]` 里写过一段完整的"为什么是 1536×960"的理由，下一次编辑器保存就全没了。
+> **理由写在这里（§15.1 / §16.2），`project.godot` 里只留数值。**
+
 > ⚠️ **改视口 = 改整个世界尺度**。改完必须同步：所有 `.tres` 的空间量（由 `tools/gen_art_resources.gd`
 > 的常量 `S` 统一生成）、地图 Marker 坐标、`tools/paint_test_level.gd` 的瓦片尺寸。
 > 改完必须重跑三个测试套件。详见 §15.11。
