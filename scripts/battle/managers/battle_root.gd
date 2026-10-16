@@ -341,12 +341,15 @@ func get_hero() -> HeroUnit:
 # ─────────────────────────────────────────────
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_echo():
+		return   # 按住不放会持续产生 echo，否则会疯狂触发
+	# 回车：开始当前波次。布防阶段随时可用（即使这关配了自动开始也能提前开战）。
+	if event.is_action_pressed(&"start_wave"):
+		if rounds != null:
+			rounds.request_start_wave()
+		return
 	# 重开 / 认输。两者是同一个动作：战斗中按下 = 认输重开，
 	# 打完之后按下 = 直接再来一遍（免得为了重测又去按 F5）。
-	#
-	# 排除 echo：按住不放会持续产生 echo 事件，否则会疯狂重开。
-	if event.is_echo():
-		return
 	if event.is_action_pressed(&"restart") or event.is_action_pressed(&"surrender"):
 		restart()
 	elif event.is_action_pressed(&"pause"):

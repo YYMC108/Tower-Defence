@@ -103,9 +103,24 @@ func _run() -> void:
 	])
 
 	print("")
-	print("--- 2. 布防 → 战斗 → 敌人生成 ---")
-	await _advance_until(func() -> bool: return _battle.rounds.phase == RoundManager.Phase.COMBAT, 6.0)
-	_check(_battle.rounds.phase == RoundManager.Phase.COMBAT, "布防结束后进入战斗阶段")
+	print("--- 2. 布防等回车 → 战斗 → 敌人生成 ---")
+	# 布防阶段现在**等玩家按回车**（LevelData.prepare_seconds = 0），
+	# 不再定时自动开战。这里先断言"确实在等"，再主动开战 ——
+	# 顺带把"等回车"这条新逻辑覆盖掉，否则以后改回去也没人发现。
+	_check(_battle.rounds.phase == RoundManager.Phase.PREPARE, "开局停在布防阶段")
+	_check(_battle.rounds.is_waiting_for_player(), "布防阶段在等玩家按回车")
+	await _advance(1.5)
+	_check(_battle.rounds.phase == RoundManager.Phase.PREPARE,
+		"不按回车就一直停在布防（等待 1.5 秒后阶段仍为 %s）" % [
+			RoundManager.Phase.keys()[_battle.rounds.phase],
+		])
+	_check(_battle.registry.enemy_count() == 0, "布防阶段场上没有敌人")
+	_battle.rounds.request_start_wave()
+	await _advance(0.3)
+	_check(_battle.rounds.phase == RoundManager.Phase.COMBAT, "按回车后进入战斗阶段")
+	_check(not _battle.rounds.is_waiting_for_player(), "进入战斗后不再等玩家")
+	# 战斗阶段再按回车不应有任何效果（不该重复开波）
+	_check(_battle.rounds.request_start_wave() == false, "战斗阶段按回车是安全的空操作")
 	await _advance(0.8)
 	_check(_battle.registry.enemy_count() > 0,
 		"敌人已生成（当前 %d 只）" % _battle.registry.enemy_count())
@@ -176,24 +191,35 @@ func _run() -> void:
 
 	print("")
 	print("--- 7. 主角递增惩罚复活 ---")
-	# 用 0.05 秒粒度轮询，在复活那一刻取血量。
+	# 用 0.05 秒粒度轮询等待复活；但**复活血量必须用信号捕获**，不能轮询 current_health。
 	#
-	# 两个坑：
-	#   1. 不能最后再查 —— 敌人仇恨半径 304，主角一复活就可能立刻挨打，
-	#      事后读到的不是复活时的血量。
-	#   2. 不能用「逐帧」轮询（STEP=1/60）—— 视口放大到 1536x960 后 headless
-	#      帧率下降，逐帧轮询会让模拟时间推进远慢于真实时间，测试变得极慢。
-	#      敌人攻击间隔 ≥ 1 秒，0.05 秒粒度足够精确。
+	# 为什么不能轮询：主角满血站起来的**同一帧**，旁边的近战可能正好出手，
+	# 轮询读到的就已经是 133/140 了（差 7 = 一只小兵一刀）。实测**随机失败**。
+	# 这是**测试的观测问题，不是游戏 bug** —— 复活后立刻被围殴本来就是预期玩法。
+	#
+	# 为什么不能"事先把 invulnerable 置 true 来保护观测窗口"：
+	# `HealthComponent.revive_full()` 结尾有一句 `invulnerable = false`，
+	# 会把保护清掉（见 health_component.gd 第 68 行）。我试过，照样随机失败。
+	#
+	# 信号捕获为什么准：`revive_full()` **同步**发 health_changed(max, max)，
+	# 而任何伤害都排在它之后；主角死亡期间 apply_damage/heal 都会提前 return，
+	# 所以连上之后收到的**第一个值就是货真价实的复活血量**。
 	const REVIVE_POLL_STEP: float = 0.05
+	var revive_samples: Array[float] = []
+	var capture_revive := func(_cur: float, _max: float) -> void:
+		if hero != null and not hero.health.is_dead:
+			revive_samples.append(hero.health.current_health)
+	hero.health.health_changed.connect(capture_revive)
+
 	var revived: bool = false
-	var health_at_revive: float = -1.0
 	var waited2: float = 0.0
 	while waited2 < 14.0 and not revived:
 		await _advance(REVIVE_POLL_STEP)
 		waited2 += REVIVE_POLL_STEP
 		if hero != null and hero.is_alive():
 			revived = true
-			health_at_revive = hero.health.current_health
+	hero.health.health_changed.disconnect(capture_revive)
+	var health_at_revive: float = revive_samples[0] if not revive_samples.is_empty() else -1.0
 	_check(revived, "主角已复活（等待 %.1f 秒，第 1 次档位应为 5 秒）" % waited2)
 	if hero != null:
 		_check(hero.collision_layer != 0, "复活后碰撞层恢复（重新构成阻挡）")

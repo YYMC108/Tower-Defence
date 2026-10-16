@@ -19,16 +19,14 @@ signal hero_revive_scheduled(delay: float, death_count: int)
 signal hero_revived()
 
 enum Phase {
-	PREPARE,     ## 布防：无敌人，可调站位（本期只做自动开始）
+	PREPARE,     ## 布防：无敌人，等玩家按回车开战（时长见 LevelData.prepare_seconds）
 	COMBAT,      ## 战斗：敌人在场
 	SETTLE,      ## 结算：塔重生、惩罚衰减、波次推进
 	BATTLE_OVER, ## 胜负已定
 }
 
-## 布防阶段停留时长（秒）。0 表示立即开战。
-@export var prepare_duration: float = 2.0
-
-## 结算阶段停留时长（秒）
+## 结算阶段停留时长（秒）。这是纯表现停顿，不是策划旋钮，所以留在代码里。
+## 布防时长**不在这里** —— 它是每关的设计决定，配在 LevelData.prepare_seconds。
 @export var settle_duration: float = 1.2
 
 var state: BattleState = null
@@ -74,9 +72,12 @@ func _process(delta: float) -> void:
 
 	match phase:
 		Phase.PREPARE:
-			_countdown -= delta
-			if _countdown <= 0.0:
-				_enter_combat()
+			# prepare_seconds <= 0 表示**等玩家按回车**（不会自己倒数完），
+			# 开战只能由 request_start_wave() 触发。
+			if _countdown > 0.0:
+				_countdown -= delta
+				if _countdown <= 0.0:
+					_enter_combat()
 		Phase.COMBAT:
 			if _is_wave_cleared():
 				_enter_settle()
@@ -100,10 +101,28 @@ func _enter_prepare() -> void:
 		_finish_battle(true)
 		return
 	phase = Phase.PREPARE
-	_countdown = prepare_duration
+	# 布防时长来自关卡配置（不是 RoundManager 自己的字段）：
+	#   0 → 一直等玩家按回车；>0 → 最多等这么多秒后自动开战
+	_countdown = level.prepare_seconds if level != null else 0.0
 	phase_changed.emit(phase, state.current_wave_index)
 	if on_enter_prepare.is_valid():
 		on_enter_prepare.call(state.current_wave_index)
+
+
+## 布防阶段是否在**等玩家**（而不是在自动倒数）。
+## HUD 用它决定要不要显示"按回车开始第 N 波"的提示。
+func is_waiting_for_player() -> bool:
+	return phase == Phase.PREPARE and not _battle_finished and _countdown <= 0.0
+
+
+## 玩家主动开战（回车）。布防阶段随时可用 ——
+## 即使这关配了自动开始，玩家按回车也能跳过剩余等待。
+## 返回是否真的开战了（非布防阶段调用返回 false，是安全的空操作）。
+func request_start_wave() -> bool:
+	if _battle_finished or phase != Phase.PREPARE:
+		return false
+	_enter_combat()
+	return true
 
 
 func _enter_combat() -> void:

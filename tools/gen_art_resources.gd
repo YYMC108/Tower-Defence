@@ -273,6 +273,9 @@ func _init() -> void:
 	level.map_scene_path = "res://scenes/battle/map/test_level.tscn"
 	level.base_max_health = 100.0
 	level.starting_battle_currency = 10
+	# 布防：0 = 等玩家按回车。实验田要慢慢试手感，所以要等玩家，
+	# 不能像早期那样 2 秒自动开战（那样玩家来不及看地图）。
+	level.prepare_seconds = 0.0
 	level.hero_revive_base_seconds = 5.0
 	level.hero_revive_increment = 5.0
 	level.hero_revive_max_seconds = 30.0

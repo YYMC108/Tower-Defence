@@ -18,6 +18,13 @@ extends Resource
 ## 波次顺序（用无类型 Array 避开检查器类型坑）
 @export var waves: Array = []
 
+@export_group("节奏")
+## 布防阶段（PREPARE）怎么开始：
+##   **0 = 等玩家按回车**（推荐，也是默认）—— 玩家可以慢慢看地图、调站位
+##   >0 = 自动开始，最多等这么多秒
+## 注意：**无论哪种，布防期间按回车都会立即开战。**
+@export var prepare_seconds: float = 0.0
+
 @export_group("大本营")
 @export var base_max_health: float = 100.0
 ## 本关开局给的局内资源（用于重建被摧毁的塔，本期只做展示）
@@ -28,10 +35,10 @@ extends Resource
 ## 可选动画：idle（必需）/ damaged（受损）/ critical（濒危）。
 ## 血量跨过阈值会自动切换，素材只交 idle 也能跑。
 @export var base_sprite_set: UnitSpriteSet
-## 大本营显示缩放。大本营是视觉焦点，通常比单位大。
-@export var base_sprite_scale: float = 0.5
-## 无素材时的调试方框尺寸（游戏像素）。建议 2~3 格（32~48）。
-@export var base_display_size: Vector2 = Vector2(48, 48)
+## 大本营显示缩放（256px 画布 × 1.0 = 256px 显示，见 DESIGN.md 15.11）
+@export var base_sprite_scale: float = 1.0
+## 无素材时的调试方框尺寸（游戏像素）。瓦片 64px，192 = 3×3 格。
+@export var base_display_size: Vector2 = Vector2(192, 192)
 
 @export_group("主角复活惩罚（递增 + 封顶，见 DESIGN.md 第 6 节）")
 ## 第 1 次死亡的复活时间

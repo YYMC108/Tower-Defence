@@ -12,6 +12,14 @@ const FONT_SIZE_SMALL: int = 30
 ## 边距与间距的缩放倍数（与字号一致）
 const UI_SCALE: int = 3
 
+## 屏幕中央大字的颜色（三态互斥：胜负 / 复活 / 布防提示）
+const CENTER_DANGER_COLOR: Color = Color(1.0, 0.40, 0.40)
+const CENTER_CALM_COLOR: Color = Color(0.85, 0.92, 1.0)
+const CENTER_WIN_COLOR: Color = Color(0.50, 1.0, 0.60)
+
+## 胜负文案一旦显示就不再被 _refresh_center_text() 覆盖
+var _battle_over_shown: bool = false
+
 var _base_label: Label
 var _wave_label: Label
 var _phase_label: Label
@@ -106,11 +114,25 @@ func bind(state: BattleState, rounds: RoundManager) -> void:
 func _process(_delta: float) -> void:
 	if _rounds == null:
 		return
+	_refresh_center_text()
+
+
+## 屏幕中央大字。三种内容互斥，优先级：**胜负 > 复活倒计时 > 布防提示**。
+##
+## 布防提示是必须的：布防阶段现在**等玩家按回车**（LevelData.prepare_seconds = 0），
+## 中央什么都不显示的话，玩家会以为游戏卡住了。
+func _refresh_center_text() -> void:
+	if _battle_over_shown:
+		return   # 胜负文案由 _on_battle_won/_on_battle_lost 设定，不被覆盖
 	if _rounds.is_hero_dead():
+		_center_label.add_theme_color_override("font_color", CENTER_DANGER_COLOR)
 		_center_label.text = "主角阵亡\n%.1f 秒后复活（第 %d 次）" % [
 			_rounds.hero_respawn_remaining(), _state.hero_death_count,
 		]
-	elif _center_label.text.begins_with("主角阵亡"):
+	elif _rounds.phase == RoundManager.Phase.PREPARE:
+		_center_label.add_theme_color_override("font_color", CENTER_CALM_COLOR)
+		_center_label.text = "按回车开始第 %d 波" % (_state.current_wave_index + 1)
+	else:
 		_center_label.text = ""
 
 
@@ -131,14 +153,16 @@ func _on_phase_changed(_phase: RoundManager.Phase, _wave_index: int) -> void:
 
 
 func _on_battle_won() -> void:
-	_center_label.add_theme_color_override("font_color", Color(0.5, 1.0, 0.6))
+	_battle_over_shown = true
+	_center_label.add_theme_color_override("font_color", CENTER_WIN_COLOR)
 	# ⚠️ 这里必须也写"怎么重开"。之前胜利文案只有"关卡完成！"，
 	# 结果想再测一遍的人只能退出重新按 F5 —— 明明功能是有的，只是没告诉他。
 	_center_label.text = "关卡完成！\n大本营剩余 %.0f\n\n按 R 再来一遍" % _state.base_health
 
 
 func _on_battle_lost() -> void:
-	_center_label.add_theme_color_override("font_color", Color(1.0, 0.35, 0.35))
+	_battle_over_shown = true
+	_center_label.add_theme_color_override("font_color", CENTER_DANGER_COLOR)
 	_center_label.text = "大本营陷落\n\n按 R 再来一遍"
 
 

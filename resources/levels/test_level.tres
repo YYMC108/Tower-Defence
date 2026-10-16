@@ -26,6 +26,4 @@ description = "M1 实验田。1 个塔位、1 波近战敌人。改 waves 数组
 map_scene_path = "res://scenes/battle/map/test_level.tscn"
 waves = [SubResource("Resource_gmv7m")]
 base_sprite_set = ExtResource("1_1k1ro")
-base_sprite_scale = 1.0
-base_display_size = Vector2(192, 192)
 reward_gold = 10
