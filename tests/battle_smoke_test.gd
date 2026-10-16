@@ -346,6 +346,67 @@ func _run() -> void:
 			"" if off_screen.is_empty() else "（越界：%s）" % ", ".join(off_screen),
 		])
 
+	print("")
+	print("--- 13. 重开：不退出即可从头再来一遍 ---")
+	# 策划需求：打完一波想再测一遍时，不用退出去按 F5。
+	# 这里验证 BattleRoot.restart() 的**就地重建**是否真的把状态清干净 ——
+	# 重建不彻底会留下"幽灵单位"，而那种 bug 在画面上很难看出来，必须靠断言查。
+	#
+	# 注意：本测试跑完时的局面**不固定** —— headless 下塔的击杀时机有抖动，
+	# 有时塔把敌人清光（胜利、大本营剩 ~72），有时一只敌人冲到把家打爆（失败、0）。
+	# 两种情况都合法，上面的断言对此不敏感；而重开必须能从**任何一种**状态
+	# （包括"已经输了、大本营是 0"）干净地重置回初始态。
+	# ⚠️ 变量名不要与前面的步骤重复（base_before 在第 4 步已用过）——
+	# 重复声明是**解析错误**，而解析错误的表现是"测试静默挂起"而不是报错退出。
+	var base_at_restart: float = _battle.state.base_health
+	var enemies_at_restart: int = _battle.registry.enemy_count()
+	var deaths_at_restart: int = _battle.state.hero_death_count
+	var hero_old: HeroUnit = _battle.get_hero()   # 留一份旧引用，用来查"幽灵单位"
+	print("  重开前：大本营=%.0f 死亡次数=%d 场上敌人=%d 阶段=%s" % [
+		base_at_restart, deaths_at_restart, enemies_at_restart,
+		RoundManager.Phase.keys()[_battle.rounds.phase],
+	])
+	_battle.restart()
+	await _advance(0.3)   # 等 queue_free 真正生效
+
+	var problems: PackedStringArray = PackedStringArray()
+	if not is_equal_approx(_battle.state.base_health, 100.0):
+		problems.append("大本营血量 %.0f（应 100）" % _battle.state.base_health)
+	if _battle.state.hero_death_count != 0:
+		problems.append("死亡次数 %d（应 0）" % _battle.state.hero_death_count)
+	if _battle.state.current_wave_index != 0:
+		problems.append("波次索引 %d（应 0）" % _battle.state.current_wave_index)
+	if _battle.registry.enemy_count() != 0:
+		problems.append("场上敌人 %d（应 0）" % _battle.registry.enemy_count())
+	if _battle.rounds.phase != RoundManager.Phase.PREPARE:
+		problems.append("阶段 %s（应 PREPARE）" % RoundManager.Phase.keys()[_battle.rounds.phase])
+	if _battle.registry.towers.size() != 1:
+		problems.append("塔数量 %d（应 1）" % _battle.registry.towers.size())
+	if _battle.get_map() == null:
+		problems.append("地图没重建")
+	if _battle.hud == null:
+		problems.append("HUD 没重建")
+	var hero_new: HeroUnit = _battle.get_hero()
+	if hero_new == null or not hero_new.is_alive():
+		problems.append("新主角不可用")
+	elif not is_equal_approx(hero_new.health.current_health, hero_new.data.max_health):
+		problems.append("新主角不是满血（%.0f）" % hero_new.health.current_health)
+	# 关键：旧对象必须真的被释放，否则就是在场景里堆垃圾
+	if hero_old != null and is_instance_valid(hero_old):
+		problems.append("旧主角没被释放（幽灵单位）")
+
+	_check(problems.is_empty(),
+		"重开后回到干净初始状态%s" % (
+			"" if problems.is_empty() else "（问题：%s）" % ", ".join(problems)
+		))
+
+	print("  重开后：大本营=%.0f 死亡次数=%d 场上敌人=%d 阶段=%s 塔=%d" % [
+		_battle.state.base_health, _battle.state.hero_death_count,
+		_battle.registry.enemy_count(),
+		RoundManager.Phase.keys()[_battle.rounds.phase],
+		_battle.registry.towers.size(),
+	])
+
 	_finish()
 
 

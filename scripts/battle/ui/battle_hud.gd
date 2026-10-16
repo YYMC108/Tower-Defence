@@ -81,7 +81,7 @@ func _build() -> void:
 	bottom.add_child(bottom_row)
 
 	_hint_label = _make_label(bottom_row, Color(0.75, 0.75, 0.80), FONT_SIZE_SMALL)
-	_hint_label.text = "WASD/方向键 移动   ·   连点鼠标左键 三段连招（攻击时定身）   ·   回车 开始下一波   ·   Backspace 认输"
+	_hint_label.text = "WASD/方向键 移动   ·   连点鼠标左键 三段连招（攻击时定身）   ·   回车 开始下一波   ·   R 重开   ·   Esc 退出"
 
 
 func _make_label(parent: Node, color: Color, font_size: int) -> Label:
@@ -132,12 +132,14 @@ func _on_phase_changed(_phase: RoundManager.Phase, _wave_index: int) -> void:
 
 func _on_battle_won() -> void:
 	_center_label.add_theme_color_override("font_color", Color(0.5, 1.0, 0.6))
-	_center_label.text = "关卡完成！\n大本营剩余 %.0f" % _state.base_health
+	# ⚠️ 这里必须也写"怎么重开"。之前胜利文案只有"关卡完成！"，
+	# 结果想再测一遍的人只能退出重新按 F5 —— 明明功能是有的，只是没告诉他。
+	_center_label.text = "关卡完成！\n大本营剩余 %.0f\n\n按 R 再来一遍" % _state.base_health
 
 
 func _on_battle_lost() -> void:
 	_center_label.add_theme_color_override("font_color", Color(1.0, 0.35, 0.35))
-	_center_label.text = "大本营陷落\n按 Backspace 重开"
+	_center_label.text = "大本营陷落\n\n按 R 再来一遍"
 
 
 func refresh() -> void:

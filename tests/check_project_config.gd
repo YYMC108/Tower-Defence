@@ -51,7 +51,7 @@ func _init() -> void:
 		"move_left": 2, "move_right": 2, "move_up": 2, "move_down": 2,
 		"attack": 1, "attack_secondary": 1,
 		"skill_1": 1, "skill_2": 1, "skill_3": 1, "dash": 1,
-		"pause": 1, "start_wave": 2, "surrender": 1,
+		"pause": 1, "start_wave": 2, "surrender": 1, "restart": 1,
 	}
 	for act: String in expected.keys():
 		if not InputMap.has_action(act):

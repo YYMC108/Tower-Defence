@@ -34,6 +34,25 @@ var _base_position: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
+	_setup()
+
+
+## 从头再来：**就地重建**一场全新战斗（不重载场景）。
+##
+## 【为什么不直接用 get_tree().reload_current_scene()】
+##   那个只在"本节点恰好就是当前场景根"时才有效。将来战斗由选关界面实例化
+##   （关卡间的"重试"按钮）时，reload_current_scene() 会去重载选关界面甚至出错。
+##   就地重建在任何宿主下都成立，而且**自动化测试可以直接调用它验证**。
+##
+## 排掉的东西：单位、地图、据点、HUD、命中特效生成器（全是子节点，整棵清掉），
+## 以及 BattleState / UnitRegistry / BattleEconomy / WaveSpawner / RoundManager
+## 这五个管理器实例（下一轮 _build_managers() 会重新创建）。
+func restart() -> void:
+	_teardown()
+	_setup()
+
+
+func _setup() -> void:
 	_load_level()
 	if level == null:
 		push_error("没有可用的关卡配置，战斗无法开始")
@@ -48,6 +67,30 @@ func _ready() -> void:
 	_build_hud()
 	_wire_round_manager()
 	rounds.begin()
+
+
+## 拆掉这一场战斗的全部运行时对象，回到"刚 new 出来"的干净状态。
+func _teardown() -> void:
+	# 先清空缓存引用，避免拆除过程中有回调又读到半死不活的对象
+	_towers.clear()
+	_hero = null
+	_base = null
+	_entities = null
+	_map = null
+	hud = null
+	state = null
+	registry = null
+	economy = null
+	spawner = null
+	rounds = null
+	_base_position = Vector2.ZERO
+
+	# remove_child 立即把它从树上摘掉（于是 HitEffectSpawner 的静态实例引用
+	# 会在 _exit_tree 里被清掉），queue_free 只负责回收内存。
+	# 先摘后释放，这样紧接着的 _setup() 不会看到任何残留节点。
+	for child: Node in get_children():
+		remove_child(child)
+		child.queue_free()
 
 
 # ─────────────────────────────────────────────
@@ -298,8 +341,13 @@ func get_hero() -> HeroUnit:
 # ─────────────────────────────────────────────
 
 func _unhandled_input(event: InputEvent) -> void:
-	# 认输重开（DESIGN.md：必须有，否则玩家陷入必输局还要熬完剩余波次）
-	if event.is_action_pressed(&"surrender"):
-		get_tree().reload_current_scene()
+	# 重开 / 认输。两者是同一个动作：战斗中按下 = 认输重开，
+	# 打完之后按下 = 直接再来一遍（免得为了重测又去按 F5）。
+	#
+	# 排除 echo：按住不放会持续产生 echo 事件，否则会疯狂重开。
+	if event.is_echo():
+		return
+	if event.is_action_pressed(&"restart") or event.is_action_pressed(&"surrender"):
+		restart()
 	elif event.is_action_pressed(&"pause"):
 		get_tree().quit()

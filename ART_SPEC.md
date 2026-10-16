@@ -1,4 +1,4 @@
-﻿# Tower Defence — 美术规格约定
+# Tower Defence — 美术规格约定
 
 > **本文件从 [DESIGN.md](DESIGN.md) 第 15 节原样提取，便于单独发给美术协作者。**
 > 如与 [DESIGN.md](DESIGN.md) 冲突，**以后者为准**。修改请只改 [DESIGN.md](DESIGN.md)，再重新提取本文件。
